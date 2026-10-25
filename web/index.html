@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f1">
+  <title>CleanupTV · Một chiếc TV gọn gàng hơn</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="CleanupTV trang chủ"><span class="brand-icon">c<span></span></span>Cleanup<span>TV</span></a>
+    <div class="local-label"><span class="dot"></span> CHẠY TRÊN MÁY CỦA BẠN</div>
+    <nav id="steps" aria-label="Các bước thiết lập"></nav>
+    <div class="sidebar-bottom"><span class="shield">◇</span><strong>Bạn luôn có đường quay lại.</strong><p>Trạng thái trước mỗi thay đổi được lưu trên máy để khôi phục.</p><button class="text-btn" id="restore-open">Mở khôi phục <span>↗</span></button></div>
+    <div class="version">WINDOWS · LOCAL EDITION <span>0.2</span></div>
+  </aside>
+  <div class="shell">
+    <header class="topbar"><span>Không gian thiết lập <span class="slash">/</span> <strong id="crumb">Chuẩn bị</strong></span><div class="top-actions"><span class="connection" id="connection"><i></i> Chưa kết nối TV</span><button class="icon-btn" id="log-toggle" aria-label="Mở nhật ký" title="Nhật ký">≡</button></div></header>
+    <main>
+      <section id="trial-panel" class="hidden" aria-live="polite"></section>
+      <div id="screen"></div>
+      <section id="job-panel" class="job-panel hidden" aria-live="polite"></section>
+      <section id="restore-panel" class="card hidden"></section>
+      <section id="logs" class="card hidden"><div class="card-heading"><h2>Nhật ký trên máy</h2><span class="tag">Không gửi lên máy chủ</span></div><pre id="log-content"></pre></section>
+      <footer><span><span class="dot"></span> Chỉ phục vụ tại 127.0.0.1</span><a href="https://github.com/Gathin23/cleanyourtv" target="_blank" rel="noreferrer">Dựa trên CleanYourTV ↗</a></footer>
+    </main>
+  </div>
+  <div id="toast" role="status" class="toast hidden"></div>
+</body>
+</html>

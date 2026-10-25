@@ -1,0 +1,27 @@
+{
+  "python": {
+    "name": "Python 3.13.7 portable (x64)",
+    "url": "https://www.python.org/ftp/python/3.13.7/python-3.13.7-embed-amd64.zip",
+    "sha256": "f6cca216a359be84797cabb54149ce5e062afb16cc7567eb7fc51cacb2d86b65"
+  },
+  "adb": {
+    "name": "Google Android Platform Tools 37.0.0 (Windows)",
+    "url": "https://dl.google.com/android/repository/platform-tools_r37.0.0-win.zip",
+    "sha256": "4fe305812db074cea32903a489d061eb4454cbc90a49e8fea677f4b7af764918"
+  },
+  "source": {
+    "name": "CleanYourTV source 204143007f0bebfb14d6ef001a32e5836b1c90b5",
+    "url": "https://codeload.github.com/Gathin23/cleanyourtv/zip/204143007f0bebfb14d6ef001a32e5836b1c90b5",
+    "sha256": "eb7b5adfaf8a02805525dcc1c4e54b7a01a2b5cdc53397ed168771ac85d53fdf"
+  },
+  "jdk": {
+    "name": "Eclipse Temurin JDK 17.0.16+8 (Windows x64)",
+    "url": "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.16%2B8/OpenJDK17U-jdk_x64_windows_hotspot_17.0.16_8.zip",
+    "sha256": "8c7cfff78a55c56ebaf470ed6a89c6466b47d8274bdabdda997d7507c20325c5"
+  },
+  "sdk": {
+    "name": "Google Android Command Line Tools 19.0",
+    "url": "https://dl.google.com/android/repository/commandlinetools-win-13114758_latest.zip",
+    "sha256": "98b565cb657b012dae6794cefc0f66ae1efb4690c699b78a614b4a6a3505b003"
+  }
+}

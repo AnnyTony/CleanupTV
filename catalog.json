@@ -1,0 +1,343 @@
+[
+  {
+    "package": "com.miui.tv.analytics",
+    "brand": "Xiaomi",
+    "title": "Phân tích sử dụng Xiaomi",
+    "description": "Ngừng gửi số liệu sử dụng từ dịch vụ này. Không thay đổi màn hình chính.",
+    "source": "examples/xiaomi-mi-tv-4a/debloat.txt"
+  },
+  {
+    "package": "com.xiaomi.statistic",
+    "brand": "Xiaomi",
+    "title": "Thống kê Xiaomi",
+    "description": "Tắt dịch vụ thống kê này; các ứng dụng xem phim vẫn được giữ.",
+    "source": "examples/xiaomi-mi-tv-4a/debloat.txt"
+  },
+  {
+    "package": "tv.samba.ssm",
+    "title": "Nhận diện nội dung Samba TV",
+    "description": "Ngừng dịch vụ Samba nhận diện nội dung đang xem. Mất các đề xuất dựa trên tính năng này.",
+    "source": "examples/sony-bravia-4k-vh2/debloat.txt"
+  },
+  {
+    "package": "tv.samba.ssm.ui",
+    "title": "Giao diện Samba TV",
+    "description": "Ẩn giao diện cài đặt Samba TV; có thể bật lại bằng Khôi phục.",
+    "source": "examples/sony-bravia-4k-vh2/debloat.txt"
+  },
+  {
+    "package": "com.sonyericsson.idd.agent",
+    "brand": "Sony",
+    "title": "Thống kê sử dụng Sony",
+    "description": "Tắt agent gửi dữ liệu sử dụng này, giữ giọng nói và Chromecast.",
+    "source": "examples/sony-bravia-4k-vh2/debloat.txt"
+  },
+  {
+    "package": "com.sony.dtv.sonybugreportsys",
+    "brand": "Sony",
+    "title": "Báo lỗi tự động Sony",
+    "description": "Tắt báo cáo lỗi này; hỗ trợ kỹ thuật có thể cần bật lại để lấy báo cáo.",
+    "source": "examples/sony-bravia-4k-vh2/debloat.txt"
+  },
+  {
+    "package": "com.sony.dtv.promos",
+    "brand": "Sony",
+    "title": "Nội dung quảng bá Sony",
+    "description": "Tắt ứng dụng quảng bá Sony/Freeplay này. Chỉ chọn nếu bạn không dùng.",
+    "source": "examples/sony-bravia-4k-vh2/debloat.txt"
+  },
+  {
+    "package": "com.sony.dtv.sonyselect",
+    "brand": "Sony",
+    "title": "Đề xuất ứng dụng Sony Select",
+    "description": "Tắt trang giới thiệu/đề xuất ứng dụng Sony Select. Không tắt Google Play.",
+    "source": "examples/sony-bravia-4k-vh2/debloat.txt"
+  },
+  {
+    "package": "com.sony.dtv.duid.generator",
+    "title": "Mã thống kê Sony",
+    "description": "Tắt bộ tạo định danh thống kê này.",
+    "source": "examples/sony-kd-55x8000c/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.sony.dtv.lastaccess",
+    "title": "Thống kê truy cập Sony",
+    "description": "Ngừng agent ghi nhận hoạt động truy cập.",
+    "source": "examples/sony-bravia-4k-vh2/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.sony.dtv.usercontext",
+    "title": "Ngữ cảnh sử dụng Sony",
+    "description": "Ngừng agent thu thập ngữ cảnh sử dụng này.",
+    "source": "examples/sony-bravia-4k-vh2/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.sony.dtv.sonyshelf",
+    "title": "Đề xuất Sony Shelf",
+    "description": "Ẩn hàng đề xuất Sony Shelf trên Home gốc.",
+    "source": "examples/sony-kd-49x8307c/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.sony.dtv.sonytab",
+    "title": "Thẻ nội dung Sony",
+    "description": "Ẩn thẻ giới thiệu nội dung Sony trên Home.",
+    "source": "examples/sony-bravia-4k-vh1/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.tcl.bi",
+    "title": "Thống kê hành vi TCL",
+    "description": "Ngừng dịch vụ thống kê hành vi sử dụng TCL.",
+    "source": "examples/ffalcon-r34a0-cn/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.tcl.logkit",
+    "title": "Nhật ký chẩn đoán TCL",
+    "description": "Tắt bộ thu thập nhật ký chẩn đoán này; hỗ trợ kỹ thuật có thể cần bật lại.",
+    "source": "examples/ffalcon-65s585c-pro/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.tcl.profilemanager",
+    "title": "Thống kê hồ sơ TCL",
+    "description": "Ngừng dịch vụ báo cáo hồ sơ/người xem này.",
+    "source": "examples/ffalcon-65s585c-pro/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.tcl.xian.StartandroidService",
+    "title": "Báo cáo nền TCL",
+    "description": "Ngừng dịch vụ báo cáo nền có trong hồ sơ TV này.",
+    "source": "examples/ffalcon-65s585c-pro/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.hisense.platformreport",
+    "title": "Thống kê Hisense",
+    "description": "Ngừng dịch vụ thống kê nền Hisense này.",
+    "source": "examples/hisense-65d62qh/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.hisense.logupload",
+    "title": "Gửi nhật ký Hisense",
+    "description": "Tắt dịch vụ tải nhật ký chẩn đoán này lên mạng.",
+    "source": "examples/hisense-65d62qh/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.hisense.app.logreport",
+    "title": "Báo cáo lỗi Hisense",
+    "description": "Tắt dịch vụ báo cáo nhật ký này; có thể bật lại khi cần hỗ trợ.",
+    "source": "examples/hisense-hg9/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.hisense.hitv.das",
+    "title": "Báo cáo dữ liệu Hisense",
+    "description": "Tắt bộ nhận và gửi báo cáo dữ liệu này.",
+    "source": "examples/hisense-65d62qh/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.hisense.evservice",
+    "title": "Nhận diện nội dung Hisense",
+    "description": "Ngừng ACR nhận diện nội dung đang xem; mất đề xuất dựa trên tính năng này.",
+    "source": "examples/hisense-hg9/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.hisense.tv.smartsense",
+    "title": "Thống kê Smartsense",
+    "description": "Tắt dịch vụ phân tích Smartsense này.",
+    "source": "examples/hisense-hg9/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.coocaa.sysreport",
+    "title": "Báo cáo hệ thống Coocaa",
+    "description": "Ngừng dịch vụ báo cáo hệ thống Coocaa này.",
+    "source": "examples/coocaa-k3-pro-90p3d-max/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.skyworth.aisense",
+    "title": "Nhận diện nội dung Skyworth",
+    "description": "Ngừng ACR nhận diện nội dung phục vụ quảng bá.",
+    "source": "examples/coocaa-k3-pro-90p3d-max/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.smartdevice.acr.recommendation",
+    "title": "Nhận diện nội dung ACR",
+    "description": "Ngừng dịch vụ nhận diện nội dung đang xem này.",
+    "source": "examples/karbonn-swtv-20ae/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.zeasn.whaletrackservice",
+    "title": "Theo dõi sử dụng Zeasn",
+    "description": "Ngừng dịch vụ thống kê/theo dõi Zeasn này.",
+    "source": "examples/sankey-smart2ktvse/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.xgimi.datareporter",
+    "title": "Báo cáo sử dụng XGIMI",
+    "description": "Ngừng gửi báo cáo sử dụng từ dịch vụ này.",
+    "source": "examples/xgimi-mogo-2/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.xgimi.bugreportsender",
+    "title": "Báo lỗi XGIMI",
+    "description": "Tắt dịch vụ gửi báo cáo lỗi này.",
+    "source": "examples/xgimi-horizon-s-pro/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.zhixin.logservice.nebula",
+    "title": "Nhật ký chẩn đoán Nebula",
+    "description": "Ngừng dịch vụ thu thập và tải nhật ký này.",
+    "source": "examples/anker-nebula-d2426/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.vestel.smartlogger",
+    "title": "Nhật ký Vestel",
+    "description": "Tắt dịch vụ ghi nhật ký chẩn đoán này.",
+    "source": "examples/cecotec-shandao/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.vestel.vestelreporter",
+    "title": "Báo cáo Vestel",
+    "description": "Ngừng dịch vụ gửi báo cáo Vestel này.",
+    "source": "examples/cecotec-shandao/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.nvidia.stats",
+    "title": "Thống kê NVIDIA Shield",
+    "description": "Ngừng gửi thống kê sử dụng ẩn danh từ dịch vụ này.",
+    "source": "examples/nvidia-shield-tv-2019/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.nvidia.feedback",
+    "title": "Báo lỗi NVIDIA",
+    "description": "Tắt báo cáo lỗi và biểu mẫu gửi phản hồi NVIDIA.",
+    "source": "examples/nvidia-shield-tv-2019/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.nvidia.diagtools",
+    "title": "Chẩn đoán NVIDIA",
+    "description": "Tắt bộ thu thập nhật ký; NVIDIA Support có thể cần bật lại.",
+    "source": "examples/nvidia-shield-tv-2019/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "org.droidtv.candeebug",
+    "title": "Thống kê Philips / TP Vision",
+    "description": "Ngừng dịch vụ tải số liệu phân tích này.",
+    "source": "examples/philips-50pud7406/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "org.droidtv.usagelogger",
+    "title": "Nhật ký sử dụng Philips",
+    "description": "Ngừng ghi thống kê sử dụng, phím remote và panel từ dịch vụ này.",
+    "source": "examples/philips-50pus8517/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "tv.anoki.acr.anokiacroptin",
+    "title": "Nhận diện nội dung Anoki",
+    "description": "Ngừng ACR nhận diện chương trình đang xem.",
+    "source": "examples/aipro2k/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "tv.anoki.acr.controller",
+    "title": "Bộ nhận diện Anoki",
+    "description": "Tắt bộ điều khiển nhận diện nội dung ACR này.",
+    "source": "examples/beko-b43b880b/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "tv.inscape.tvclient.inscapeacr",
+    "title": "Nhận diện nội dung Inscape",
+    "description": "Ngừng nhận diện nội dung đang xem, gồm cả nội dung qua HDMI.",
+    "source": "examples/philips-65pus8102/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.hoppr.androidtv.thumper.prodtv",
+    "title": "Quảng bá Hoppr",
+    "description": "Ngừng dịch vụ quảng bá và phân tích Hoppr này.",
+    "source": "examples/nokia-streaming-box-8010/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.miui.analytics",
+    "title": "Thống kê OneTrack Xiaomi",
+    "description": "Ngừng dịch vụ thống kê OneTrack này.",
+    "source": "examples/redmi-mitv-mftp0/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.xiaomi.tvqs",
+    "title": "Báo cáo chất lượng Xiaomi",
+    "description": "Ngừng dịch vụ gửi báo cáo lỗi và hiệu năng này.",
+    "source": "examples/redmi-mitv-antl0/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.xiaomi.tvqs.overseas",
+    "title": "Báo cáo Xiaomi quốc tế",
+    "description": "Tắt dịch vụ thống kê chất lượng này.",
+    "source": "examples/xiaomi-mitv-moor2/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.xiaomi.tvqs.overseas.y24",
+    "title": "Báo cáo Xiaomi Y24",
+    "description": "Tắt dịch vụ thống kê chất lượng này.",
+    "source": "examples/xiaomi-mitv-afmu0/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.graymatrix.did",
+    "title": "Thống kê thiết bị",
+    "description": "Tắt agent phân tích thiết bị được ghi nhận trong hồ sơ này.",
+    "source": "examples/tcl-g09-google-tv/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "fr.freebox.fbxstats",
+    "title": "Thống kê Freebox",
+    "description": "Ngừng dịch vụ thống kê sử dụng Freebox này.",
+    "source": "examples/freebox-player-pop/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.google.android.feedback",
+    "title": "Gửi phản hồi Google",
+    "description": "Tắt gửi phản hồi/báo cáo lỗi; các ứng dụng xem phim vẫn được giữ.",
+    "source": "examples/acer-ar55ar2851udpro/debloat.txt",
+    "requireProfile": true
+  },
+  {
+    "package": "com.google.android.tv.bugreportsender",
+    "title": "Báo cáo lỗi Android TV",
+    "description": "Tắt dịch vụ gửi báo cáo lỗi này.",
+    "source": "examples/anker-nebula-d2140/debloat.txt",
+    "requireProfile": true
+  }
+]
