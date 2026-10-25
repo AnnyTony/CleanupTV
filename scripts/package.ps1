@@ -15,8 +15,10 @@ foreach ($file in @('index.html','app.js','style.css')) {
 New-Item -ItemType Directory -Path (Join-Path $package 'scripts') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'scripts\bootstrap.ps1') -Destination (Join-Path $package 'scripts')
 New-Item -ItemType Directory -Path (Join-Path $package 'docs') -Force | Out-Null
-Copy-Item -LiteralPath (Join-Path $root 'docs\preview.png') -Destination (Join-Path $package 'docs')
-$archive = Join-Path $dist 'CleanupTV-Windows-0.3.0.zip'
+foreach ($file in @('preview.png','VALIDATION.md','CHANGELOG-0.4.md')) {
+    Copy-Item -LiteralPath (Join-Path $root ('docs\' + $file)) -Destination (Join-Path $package 'docs')
+}
+$archive = Join-Path $dist 'CleanupTV-Windows-0.4.0.zip'
 Compress-Archive -LiteralPath $package -DestinationPath $archive -Force
 Get-FileHash -LiteralPath $archive -Algorithm SHA256
 Write-Host "Package: $archive"

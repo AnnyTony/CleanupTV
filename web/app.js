@@ -6,6 +6,8 @@ let state = {}, token = '', step = 0, backup = '', selection = new Set(), launch
 let completed = new Set(), lastJob = null, shot = '', closedResult = null, analysisDone = false, dismissedJob = '';
 const form = {host:'',port:'5555',pairPort:'',code:'',consent:false,ready:false,usb:false,licenses:false};
 const manual = new Set();
+const trialChecks = new Map();
+const requiredChecks = [['remote','Điều khiển và nút Home hoạt động'],['video','Ứng dụng xem phim phát hình bình thường'],['audio','Âm thanh và âm lượng hoạt động'],['inputs','HDMI / truyền hình hoạt động, hoặc tôi không sử dụng'],['network','Wi-Fi / mạng dây hoạt động']];
 const jobLabels = {connect:'Kết nối và đọc thông tin TV',pair:'Ghép đôi với TV',discover:'Tìm TV qua gỡ lỗi không dây',backup:'Sao lưu trạng thái TV',analyze:'Kiểm tra các gói thực sự có trên TV',apply:'Dọn các gói bạn đã chọn',build:'Chuẩn bị và build launcher',install:'Cài và kiểm tra Màn hình chính mới',restore:'Khôi phục thay đổi',optimize:'Thử giảm hiệu ứng chuyển động',measure:'Đo tài nguyên TV',keep:'Kiểm tra và giữ thay đổi',verify:'Kiểm tra phản hồi từ TV',screenshot:'Chụp màn hình TV',reboot:'Khởi động lại TV',closed:'Kiểm tra cổng gỡ lỗi'};
 const button = (label, action, kind='', disabled=false) => `<button class="btn ${kind}" data-action="${action}" ${disabled?'disabled':''}>${label}</button>`;
 const notice = (text, warning=false) => `<div class="notice ${warning?'warning':''}"><span class="notice-icon">${warning?'!':'ⓘ'}</span><p>${text}</p></div>`;
@@ -18,17 +20,17 @@ function performancePlan(){return `<div class="card"><div class="card-heading"><
 function measurementCard(){
  const report=state.measurements||{};
  const value=(v,unit)=>typeof v==='number'?`${v.toLocaleString('vi-VN')} ${unit}`:'Không có dữ liệu';
- const rows=[['CPU tại thời điểm đo','cpuPercent','%'],['RAM khả dụng','memoryAvailableMiB','MiB'],['Dung lượng trống vùng dữ liệu','storageFreeMiB','MiB']];
- return `<div class="card"><div class="card-heading"><h2>Đo tài nguyên trước và sau</h2><span class="tag">CHỈ ĐỌC THÔNG TIN</span></div><p class="muted">Để TV ở cùng màn hình, dừng phát video và chờ khoảng một phút trước mỗi lần đo. RAM khả dụng cao hơn hoặc CPU thấp hơn trong một mẫu chưa chứng minh TV nhanh hơn.</p><div class="two-buttons">${button('Đo trước thay đổi','measure-before','secondary',busy)}${button('Đo sau thay đổi','measure-after','secondary',busy)}</div><table class="resource-table"><thead><tr><th>Chỉ số</th><th>Trước</th><th>Sau</th></tr></thead><tbody>${rows.map(([label,key,unit])=>`<tr><td>${label}</td><td>${esc(value(report.before?.[key],unit))}</td><td>${esc(value(report.after?.[key],unit))}</td></tr>`).join('')}</tbody></table><p class="muted">${report.before?'Đo trước: '+esc(report.before.measured)+'. ':''}${report.after?'Đo sau: '+esc(report.after.measured)+'. ':''}TV không cung cấp chỉ số nào thì ghi Không có dữ liệu; không tự quy đổi thành phần trăm tăng tốc.</p></div>`;
+ const rows=[['CPU trung vị của 3 khoảng đo','cpuPercent','%'],['RAM khả dụng','memoryAvailableMiB','MiB'],['Dung lượng trống vùng dữ liệu','storageFreeMiB','MiB']];
+ return `<div class="card"><div class="card-heading"><h2>Đo tài nguyên trước và sau</h2><span class="tag">CHỈ ĐỌC THÔNG TIN</span></div><p class="muted">Để TV ở cùng màn hình, dừng phát video và chờ khoảng một phút trước mỗi lần đo. RAM khả dụng cao hơn hoặc CPU thấp hơn trong ba khoảng đo ngắn chưa chứng minh TV nhanh hơn.</p><div class="two-buttons">${button('Đo trước thay đổi','measure-before','secondary',busy)}${button('Đo sau thay đổi','measure-after','secondary',busy)}</div><table class="resource-table"><thead><tr><th>Chỉ số</th><th>Trước</th><th>Sau</th></tr></thead><tbody>${rows.map(([label,key,unit])=>`<tr><td>${label}</td><td>${esc(value(report.before?.[key],unit))}</td><td>${esc(value(report.after?.[key],unit))}</td></tr>`).join('')}</tbody></table><p class="muted">${report.before?'Đo trước: '+esc(report.before.measured)+'. ':''}${report.after?'Đo sau: '+esc(report.after.measured)+'. ':''}TV không cung cấp chỉ số nào thì ghi Không có dữ liệu; không tự quy đổi thành phần trăm tăng tốc.</p></div>`;
 }
-function profileInfo(){const profiles=state.profiles||[];return `<div class="card"><div class="card-heading"><h2>Đối chiếu hồ sơ TV</h2><span class="tag">${state.database?.profiles||0} HỒ SƠ · ${state.database?.brands||0} HÃNG</span></div>${profiles.length?`<p class="muted">${profiles.length===1?'Đã tìm được hồ sơ khớp mã model/thiết bị và Android.':'Có nhiều hồ sơ cùng khớp. Chỉ gợi ý gói có trong tất cả hồ sơ đó.'} Firmware theo vùng vẫn có thể khác; luôn thử trước khi giữ thay đổi.</p>${profiles.slice(0,4).map(p=>`<div class="profile-row"><b>${esc(p.tv)}</b><small>${esc(p.os)}</small><a href="https://github.com/Gathin23/cleanyourtv/blob/204143007f0bebfb14d6ef001a32e5836b1c90b5/${esc(p.source)}" target="_blank" rel="noreferrer">Xem hồ sơ cộng đồng ↗</a></div>`).join('')}`:'<p class="muted">Đã nhận diện được TV, nhưng chưa có hồ sơ model/Android khớp đủ rõ. Chỉ dùng quy tắc chung hẹp, không lấy danh sách của TV khác áp vào.</p>'}<p class="muted">Cơ sở cộng đồng giúp đối chiếu, không phải chứng nhận rằng ứng dụng này đã thử trên toàn bộ các TV đó.</p></div>`;}
+function profileInfo(){const profiles=state.profiles||[];return `<div class="card"><div class="card-heading"><h2>Đối chiếu hồ sơ TV</h2><span class="tag">${state.database?.profiles||0} HỒ SƠ · ${state.database?.brands||0} HÃNG</span></div>${profiles.length?`<p class="muted">${profiles.length===1?'Đã tìm được hồ sơ tham khảo khớp mã model/thiết bị và Android.':'Có nhiều hồ sơ cùng khớp. Chỉ gợi ý gói có trong tất cả hồ sơ đó.'} Gói phụ thuộc model chỉ được đề xuất khi khớp chính xác firmware trong danh sách đã xác minh; không suy ra tương thích từ tên model.</p>${profiles.slice(0,4).map(p=>`<div class="profile-row"><b>${esc(p.tv)}</b><small>${esc(p.os)} · ${p.compatibility==='firmware_verified'?'Khớp firmware đã xác minh':'Chỉ khớp model · chưa xác minh firmware'}</small><a href="https://github.com/Gathin23/cleanyourtv/blob/204143007f0bebfb14d6ef001a32e5836b1c90b5/${esc(p.source)}" target="_blank" rel="noreferrer">Xem hồ sơ cộng đồng ↗</a></div>`).join('')}`:'<p class="muted">Đã nhận diện được TV, nhưng chưa có hồ sơ model/Android khớp đủ rõ. Chỉ dùng quy tắc chung hẹp, không lấy danh sách của TV khác áp vào.</p>'}<p class="muted">Cơ sở cộng đồng giúp đối chiếu, không phải chứng nhận rằng ứng dụng này đã thử trên toàn bộ các TV đó.</p></div>`;}
 function renderTrial(){
  const trials=state.trials||[],panel=$('trial-panel');
  if(!trials.length){panel.classList.add('hidden');renderTrial.signature='';return;}
- const signature=JSON.stringify({trials,busy});
+ const signature=JSON.stringify({trials,busy,checks:[...trialChecks].map(([id,checks])=>[id,[...checks]])});
  if(renderTrial.signature===signature){for(const t of trials){const el=document.querySelector('[data-countdown="'+t.id+'"]');if(el){const n=Math.max(0,Math.ceil(t.until-Date.now()/1000));el.textContent=Math.floor(n/60)+':'+String(n%60).padStart(2,'0');}}return;}
  renderTrial.signature=signature;panel.className='trial-panel';
- panel.innerHTML=trials.map(t=>{const seconds=Math.max(0,Math.ceil(t.until-Date.now()/1000));return `<div class="trial-item"><div class="eyebrow">${t.pending?'ĐANG CHỜ TỰ KHÔI PHỤC':'ĐANG THỬ · CHƯA GIỮ THAY ĐỔI'}</div><h2>${esc(t.model)} ${!t.pending?`<span class="countdown" data-countdown="${esc(t.id)}">${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}</span>`:''}</h2><p>${t.pending?'Lần thử chưa đạt hoặc TV mất liên lạc. Ứng dụng sẽ tự thử khôi phục mỗi 5 giây khi kết nối trở lại. Giữ cửa sổ BAT mở. Không thể bảo đảm khôi phục nếu TV không boot hoặc mất ADB hoàn toàn.':'Hãy thử Màn hình chính, phát video, âm thanh và HDMI bằng điều khiển. Hết giờ mà chưa bấm Giữ sẽ tự hoàn tác. Giữ ứng dụng và gỡ lỗi mở trong thời gian thử.'}</p><div class="two-buttons">${!t.pending?`<button class="btn small" data-keep="${esc(t.id)}" ${busy||!t.sameDevice?'disabled':''}>TV hoạt động bình thường · Giữ thay đổi</button>`:''}<button class="btn secondary small" data-restore="${esc(t.id)}" ${busy||!t.sameDevice?'disabled':''}>TV có lỗi · Hoàn tác ngay</button>${!t.sameDevice?button('Kết nối lại TV này','go-1','secondary small'):''}</div><small>Nếu đóng BAT, bộ đếm vẫn được lưu; mở lại START.bat để ứng dụng tiếp tục tự khôi phục.</small></div>`;}).join('');
+ panel.innerHTML=trials.map(t=>{const seconds=Math.max(0,Math.ceil(t.until-Date.now()/1000));return `<div class="trial-item"><div class="eyebrow">${t.pending?'ĐANG CHỜ TỰ KHÔI PHỤC':'ĐANG THỬ · CHƯA GIỮ THAY ĐỔI'}</div><h2>${esc(t.model)} ${!t.pending?`<span class="countdown" data-countdown="${esc(t.id)}">${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}</span>`:''}</h2><p>${t.pending?'Lần thử chưa đạt hoặc TV mất liên lạc. Ứng dụng sẽ tự thử khôi phục mỗi 5 giây khi kết nối trở lại. Giữ cửa sổ BAT mở. Không thể bảo đảm khôi phục nếu TV không boot hoặc mất ADB hoàn toàn.':'Hãy thử Màn hình chính, phát video, âm thanh và HDMI bằng điều khiển. Hết giờ mà chưa bấm Giữ sẽ tự hoàn tác. Giữ ứng dụng và gỡ lỗi mở trong thời gian thử.'}</p><div class="manual-tests">${!t.pending?requiredChecks.map(([key,label])=>`<label class="check"><input type="checkbox" data-trial-check="${esc(t.id)}:${key}" ${trialChecks.get(t.id)?.has(key)?'checked':''} ${busy||!t.sameDevice?'disabled':''}><span>${label}</span></label>`).join(''):''}</div><p class="muted">Bấm Giữ sẽ mở Home để kiểm tra. Mỗi lần thử có bản hoàn tác riêng; các bước đã Giữ được giữ nguyên.</p><div class="two-buttons">${!t.pending?`<button class="btn small" data-keep="${esc(t.id)}" ${busy||!t.sameDevice||requiredChecks.some(([key])=>!trialChecks.get(t.id)?.has(key))?'disabled':''}>TV hoạt động bình thường · Giữ thay đổi</button>`:''}<button class="btn secondary small" data-restore="${esc(t.id)}" ${busy||!t.sameDevice?'disabled':''}>TV có lỗi · Hoàn tác ngay</button>${!t.sameDevice?button('Kết nối lại TV này','go-1','secondary small'):''}</div><small>Nếu đóng BAT, bộ đếm vẫn được lưu; mở lại START.bat để ứng dụng tiếp tục tự khôi phục.</small></div>`;}).join('');
 }
 function render(){
   $('crumb').textContent=titles[step];
@@ -48,6 +50,11 @@ function render(){
   if([2,5].includes(step)&&state.device)$('screen').insertAdjacentHTML('beforeend',measurementCard());
   if(step===4&&state.device&&reducedMotion)$('screen').querySelector('.actions:last-child').insertAdjacentHTML('beforebegin',performancePlan());
   renderRestore(); renderJob();renderTrial();
+  if(state.trials?.length){
+    const pending=state.trials.some(t=>t.pending||t.until<=Date.now()/1000);
+    const allowed=new Set(pending?['connect','pair']:['verify','screenshot','reboot']);
+    $('screen').querySelectorAll('button[data-action]').forEach(b=>{if(!b.dataset.action.startsWith('go-')&&!allowed.has(b.dataset.action)){b.disabled=true;b.title='Giữ hoặc hoàn tác lần thử trước khi tiếp tục.';}});
+  }
 }
 function renderRestore(){
   const records=state.backups||[];
@@ -58,7 +65,7 @@ function renderJob(){
   panel.className='job-panel '+(j.status==='error'?'error':j.status==='done'?'success':'');
   const last=state.log?.at(-1)?.text||'Đang làm việc…';
   let message=j.status==='error'?j.error:j.status==='running'?last:formatResult(j);
-  if(['apply','install','optimize'].includes(j.action)&&state.backups?.some(r=>r.id===j.result?.backup&&r.restored))message='Lần thử đã được hoàn tác về bản lưu trước buổi thiết lập. Tạo bản lưu mới nếu muốn thử lại.';
+  if(['apply','install','optimize'].includes(j.action)&&state.backups?.some(r=>r.id===j.result?.backup&&r.restored))message='Lần thử đã được hoàn tác về trước lần thử này. Tạo bản lưu mới nếu muốn thử lại.';
   const signature=JSON.stringify(j)+message;if(renderJob.signature===signature)return;renderJob.signature=signature;
   panel.innerHTML=`${j.status!=='running'?'<button class="icon-btn dismiss-job" data-action="dismiss-job" aria-label="Ẩn thông báo">×</button>':''}<strong>${j.status==='running'?'<span class="spinner"></span>':j.status==='error'?'!':'✓'} ${esc(jobLabels[j.action]||j.action)}</strong><p>${esc(message)}</p>${j.status==='running'?'<div class="progress"></div>':''}${j.action==='build'?'<a class="build-log" href="/api/build-log" target="_blank">Xem log build ↗</a>':''}`;
   $('log-content').textContent=(state.log||[]).map(l=>`${l.time}  ${l.text}`).join('\n');
@@ -77,6 +84,8 @@ async function run(action,params={}){
   }catch(e){busy=false;toast(e.message);render();}
 }
 async function poll(){
+  if(poll.running)return;
+  poll.running=true;
   try{
     const response=await fetch('/api/status');if(!response.ok)throw Error('Không đọc được trạng thái.');
     const next=await response.json();state=next;
@@ -90,6 +99,7 @@ async function poll(){
         const r=j.result||{};
         if(j.action==='connect'){completed.add(1);backup='';analysisDone=false;selection.clear();manual.clear();shot='';closedResult=null;completed.delete(2);completed.delete(3);completed.delete(4);}
         if(j.action==='backup'){backup=r.backup;completed.add(2);}
+        if(['apply','optimize','install'].includes(j.action)&&r.backup){backup=r.backup;trialChecks.delete(backup);if(state.trials?.length)completed.delete(4);}
         if(j.action==='analyze'){analysisDone=true;selection=new Set([...selection].filter(x=>state.candidates.some(c=>c.package===x)));step=3;}
         if(j.action==='keep')completed.add(4);
         if(j.action==='screenshot')shot=r.image;
@@ -105,9 +115,10 @@ async function poll(){
     }else if(wasBusy!==busy)render();
     else renderJob();
   }catch(e){if(busy)toast('Mất liên lạc với ứng dụng trên máy. Giữ cửa sổ BAT mở; mở lại giao diện để xem kết quả.');}
+  finally{poll.running=false;}
 }
 document.addEventListener('click',async event=>{
-  const keep=event.target.closest('[data-keep]');if(keep){await run('keep',{backup:keep.dataset.keep});return;}
+  const keep=event.target.closest('[data-keep]');if(keep){await run('keep',{backup:keep.dataset.keep,checks:[...(trialChecks.get(keep.dataset.keep)||[])]});return;}
   const restore=event.target.closest('[data-restore]');if(restore){await run('restore',{backup:restore.dataset.restore});return;}
   const discovered=event.target.closest('[data-discovered]');if(discovered){[form.host,form.port]=discovered.dataset.discovered.split(':');render();return;}
   const target=event.target.closest('[data-action]');if(!target)return;
@@ -130,6 +141,12 @@ document.addEventListener('click',async event=>{
 });
 document.addEventListener('change',event=>{
   const e=event.target;
+  if(e.dataset.trialCheck){
+    const [id,key]=e.dataset.trialCheck.split(':');
+    const checks=trialChecks.get(id)||new Set();
+    if(e.checked)checks.add(key);else checks.delete(key);
+    trialChecks.set(id,checks);renderTrial();return;
+  }
   if(e.dataset.package){if(e.checked)selection.add(e.dataset.package);else selection.delete(e.dataset.package);}
   if(e.id==='launcher')launcher=e.checked;
   if(e.id==='reduced-motion')reducedMotion=e.checked;

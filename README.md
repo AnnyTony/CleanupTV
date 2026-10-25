@@ -2,7 +2,7 @@
 
 Ứng dụng tiếng Việt chạy trên máy tính Windows, hướng dẫn kết nối, kiểm tra tài nguyên, giảm một số dịch vụ không cần thiết và thử màn hình chính [CleanYourTV](https://github.com/Gathin23/cleanyourtv) trên Android TV / Google TV.
 
-**Bản 0.3.0 là bản thử nghiệm. Chưa được xác minh trên TV thật.** Các kiểm thử tự động dùng thiết bị mô phỏng. Cơ sở hồ sơ cộng đồng giúp đối chiếu, không phải chứng nhận tương thích hay bảo đảm TV không gặp lỗi.
+**Bản 0.4.0 là bản thử nghiệm. Chưa được xác minh trên TV thật.** Các kiểm thử tự động dùng thiết bị mô phỏng. Cơ sở hồ sơ cộng đồng giúp đối chiếu, không phải chứng nhận tương thích hay bảo đảm TV không gặp lỗi.
 
 ![Giao diện CleanupTV](docs/preview.png)
 
@@ -34,12 +34,12 @@ CleanupTV trong kho này là giao diện độc lập, bổ sung hướng dẫn 
 
 | Chức năng | Tác dụng và giới hạn |
 | --- | --- |
-| Đo trước và sau | Ghi nhận CPU trong khoảng đo ngắn, RAM khả dụng và dung lượng trống vùng dữ liệu. Chỉ đọc thông tin. Không quy đổi thành phần trăm tăng tốc. |
+| Đo trước và sau | Lấy trung vị CPU từ ba khoảng đo ngắn, kèm số mẫu và khoảng dao động, RAM khả dụng và dung lượng trống vùng dữ liệu. Chỉ đọc thông tin. Không quy đổi thành phần trăm tăng tốc. |
 | Giảm dịch vụ nền | Chỉ tắt gói đã chọn và đã vượt qua các kiểm tra bảo vệ. Chưa có quy tắc phù hợp thì giữ nguyên. |
 | Màn hình chính đơn giản | Giảm nội dung/hiệu ứng của màn hình chính mới; hiệu quả và khả năng đặt mặc định phụ thuộc TV. |
 | Giảm hiệu ứng chuyển động | Tùy chọn thử thời gian hiệu ứng Android ở mức 0,5 lần. Có thể làm chuyển màn hình ngắn hơn, không phải tăng sức mạnh xử lý hoặc tốc độ phát video. |
 
-Đo lần đầu tại bước **Sao lưu**, đo lại tại bước **Kiểm tra**. Giữ cùng màn hình, dừng phát video và chờ khoảng một phút trước mỗi lần đo. Một mẫu CPU thấp hơn hoặc RAM khả dụng cao hơn chưa chứng minh hệ thống nhanh hơn. Chỉ số không được TV cung cấp sẽ hiện **Không có dữ liệu**.
+Đo lần đầu tại bước **Sao lưu**, đo lại tại bước **Kiểm tra**. Giữ cùng màn hình, dừng phát video và chờ khoảng một phút trước mỗi lần đo. CPU trung vị thấp hơn trong ba khoảng đo ngắn hoặc RAM khả dụng cao hơn chưa chứng minh hệ thống nhanh hơn. Chỉ số không được TV cung cấp sẽ hiện **Không có dữ liệu**.
 
 Ở bước **Chọn thay đổi**, có thể chọn **Giảm hiệu ứng chuyển động**. Ứng dụng lưu riêng các giá trị gốc, ghi nhật ký trước khi sửa, xác minh giá trị mới và dùng cùng cơ chế thử 3 phút. Hiệu ứng đã tắt hoặc ở mức thấp hơn sẽ được giữ nguyên. Nếu giá trị gốc chưa được đặt, khôi phục sẽ xóa khóa vừa thêm, thay vì tự đặt một giá trị mặc định khác.
 
@@ -66,13 +66,13 @@ Nếu Windows chặn BAT vừa tải, kiểm tra nguồn repository trước khi
 - Nếu được chọn, tự tải JDK/SDK/source đã khóa SHA256, build launcher tại máy, cài và kiểm tra Home đang hiển thị.
 - Chụp ảnh trực tiếp từ TV, kiểm tra ADB/Home và kiểm tra cổng gỡ lỗi sau khi tắt.
 
-## Phạm vi bản 0.3
+## Phạm vi bản 0.4
 
 Đây là **bản thử nghiệm cần kiểm tra trên TV thật trước khi phát hành rộng rãi**.
 
 - Phần kết nối, sao lưu và kiểm tra dành cho Android TV/Google TV. Launcher yêu cầu Android 8/API 26 trở lên; một số firmware từ chối cài APK hoặc đổi Home.
 - Cơ sở tham chiếu có **268 hồ sơ TV, 79 hãng**, nhập từ source đã khóa phiên bản. Tự đối chiếu hãng/brand, model, mã thiết bị, sản phẩm và Android; không coi cùng hãng là đủ khớp. Nếu nhiều hồ sơ ngang điểm, chỉ xét các gói chung giữa các hồ sơ. Đây là hồ sơ cộng đồng, không phải số TV đã được CleanupTV thử nghiệm.
-- Catalog thay đổi hiện có **49 quy tắc hẹp** cho thống kê, ACR, báo lỗi và quảng bá: Sony, TCL, Xiaomi, Hisense, NVIDIA, Philips/TP Vision, XGIMI, Vestel, Coocaa, Skyworth, Anoki… Quy tắc mở rộng chỉ được đề xuất khi nằm trong hồ sơ model khớp và gói thực sự có trên TV. Quy tắc chung hẹp có thể hoạt động khi chưa có hồ sơ model. Giữ lại gói lạ và các thành phần cần thiết.
+- Catalog thay đổi hiện có **49 quy tắc hẹp** cho thống kê, ACR, báo lỗi và quảng bá: Sony, TCL, Xiaomi, Hisense, NVIDIA, Philips/TP Vision, XGIMI, Vestel, Coocaa, Skyworth, Anoki… Quy tắc có `requireProfile` chỉ được đề xuất khi gói nằm trong tất cả hồ sơ khớp, thực sự có trên TV và fingerprint firmware khớp chính xác `verifiedFingerprints` của từng hồ sơ. Hiện chưa có firmware nào được xác minh trên TV thật trong danh sách này, nên các quy tắc đó được giữ lại. Khớp model hoặc chuỗi mã trong phần ghi chú không được tính là đã xác minh firmware. Quy tắc chung hẹp có thể hoạt động khi chưa có hồ sơ model. Giữ lại gói lạ và các thành phần cần thiết.
 - Không có gói phù hợp thì báo rõ và giữ nguyên. Không áp nguyên danh sách của model khác; không suy đoán gói lạ chỉ từ tên.
 - Không tắt launcher gốc hoặc setup wizard. Một số Sony/Google TV ưu tiên launcher gốc nên cách đổi Home bảo thủ này có thể không thành công; ứng dụng thử khôi phục Home cũ và thông báo giới hạn.
 - Giữ giọng nói, Chromecast, firmware update, HDMI, Bluetooth, bàn phím và ứng dụng streaming. Chưa có giao diện dọn mọi ứng dụng cài sẵn.
@@ -90,11 +90,11 @@ Chọn “Thử màn hình chính gọn hơn” ở bước 4. Ở bước 5, đ
 
 ## Thử trước và tự hoàn tác
 
-Sau khi dọn gói hoặc cài launcher, bảng đếm ngược 3 phút xuất hiện. Thử TV bằng remote rồi bấm **TV hoạt động ổn · Giữ thay đổi**. Hết giờ, kiểm tra không đạt hoặc bấm **TV có lỗi · Hoàn tác ngay** thì ứng dụng hoàn tác về bản lưu trước buổi thiết lập. Thay đổi đã được ghi trước khi gửi lệnh.
+Sau khi dọn gói hoặc cài launcher, bảng đếm ngược 3 phút xuất hiện. Thử TV bằng remote, xác nhận từng mục điều khiển, video, âm thanh, đầu vào và mạng, rồi bấm **TV hoạt động ổn · Giữ thay đổi**. Mục đầu vào cho phép xác nhận không sử dụng HDMI/truyền hình. Bấm Giữ sẽ mở Home để kiểm tra focus và tiến trình qua hai lần lấy mẫu; không chỉ kiểm tra tên ứng dụng mặc định. Hết giờ, kiểm tra không đạt hoặc bấm **TV có lỗi · Hoàn tác ngay** thì ứng dụng hoàn tác riêng lần thử đó. Sau khi đã Giữ, bước tiếp theo tự tạo bản lưu mới từ trạng thái đã chấp nhận. Lỗi nhập liệu hoặc từ chối thao tác trong lần thử đang chạy không hoàn tác phần đã Giữ. Thay đổi đã được ghi trước khi gửi lệnh.
 
 Giữ BAT và quyền gỡ lỗi mở trong lúc thử. Worker tự kiểm tra và thử khôi phục mỗi 5 giây (một lượt ADB có thể mất thêm thời gian nếu mạng timeout). Nếu TV mất kết nối, ý định khôi phục được lưu trên đĩa; khi TV trở lại hoặc mở lại START.bat, ứng dụng tiếp tục thử. Từ chối áp bản lưu nếu IP đó nay thuộc thiết bị/firmware khác. Chỉ một phiên ứng dụng trong cùng thư mục được hoạt động cùng lúc.
 
-Build toolchain được chặn trong khi đang thử để tránh trì hoãn hoàn tác. Nếu gửi khởi động lại trong lần thử, ứng dụng chờ tối đa 90 giây trước kiểm tra sức khỏe và cấp lại 3 phút thử. Bấm Giữ trước khi tắt gỡ lỗi.
+Trong lúc thử, chặn build, đo tài nguyên, phân tích, tạo bản lưu và thay đổi tiếp. Kiểm tra Home/chụp ảnh/khởi động lại dùng ngân sách tối đa 12 giây và không vượt thời hạn còn lại; lệnh thay đổi cũng dùng chung thời hạn của lần thử. Hết hạn sau một tác vụ thì hàng đợi chuyển thẳng sang khôi phục. Không chạy hai luồng ghi đồng thời lên TV. Nếu gửi khởi động lại, tạm hoãn kiểm tra sức khỏe tối đa 90 giây trong thời hạn hiện có; không cấp lại 3 phút. Nên thử reboot sau khi Giữ, rồi kiểm tra lại. Bấm Giữ trước khi tắt gỡ lỗi.
 
 Tự hoàn tác là cơ chế giảm rủi ro, **không bảo đảm TV không thể gặp lỗi**. Nếu TV không boot, ADB bị mất hoàn toàn, IP thay đổi mà chưa kết nối lại hoặc máy tính đã tắt thì không thể gửi lệnh phục hồi ngay. Hoàn tác các gói/Home đã ghi nhận, không factory reset, không hứa phục hồi firmware hay dữ liệu. Launcher cài thêm được giữ lại.
 
@@ -102,7 +102,7 @@ Tự hoàn tác là cơ chế giảm rủi ro, **không bảo đảm TV không t
 
 1. Giữ thư mục **`.local`** cạnh ứng dụng. Đây là nơi chứa bản lưu và nhật ký; không chia sẻ lên GitHub.
 2. Nếu đã tắt gỡ lỗi, bật lại và kết nối cùng TV ở bước 2. IP có thể thay đổi; nhận diện dựa vào thiết bị và firmware, không dựa vào IP.
-3. Bấm **Mở khôi phục**, chọn bản phù hợp, ưu tiên bản mới nhất trước nếu đã làm nhiều lần.
+3. Bấm **Mở khôi phục**, chọn bản phù hợp, khôi phục lần thay đổi mới nhất trước nếu đã làm nhiều lần. Ứng dụng chặn quay về bản lưu cũ khi còn lần thay đổi mới hơn chưa hoàn tác.
 4. Ứng dụng chỉ khôi phục những thay đổi được ghi nhận, giữ nguyên các gói đã tắt từ trước. Launcher cài thêm vẫn nằm trong danh sách ứng dụng.
 5. Kiểm tra chức năng trên TV và tắt gỡ lỗi khi xong.
 
@@ -126,7 +126,7 @@ node --check web/app.js
 
 Chạy bằng Python có sẵn vẫn cần ADB tại `.runtime/adb/platform-tools/adb.exe`; dùng START.bat để tự chuẩn bị.
 
-Tạo ZIP `dist/CleanupTV-Windows-0.3.0.zip` để đưa vào GitHub Releases:
+Tạo ZIP `dist/CleanupTV-Windows-0.4.0.zip` để đưa vào GitHub Releases:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1
@@ -148,7 +148,9 @@ Gói chỉ chứa source, tài liệu, BAT và manifest tải; không chứa `.l
 
 Khi báo lỗi trên GitHub, cung cấp hãng, model, phiên bản Android và mô tả hiện tượng. **Không đăng** IP thực tế, tên Wi-Fi, tài khoản, mã ghép đôi, khóa ADB, toàn bộ bản sao lưu hoặc nhật ký chưa kiểm tra thông tin riêng tư.
 
-Kiểm thử tự động mô phỏng TV và kiểm tra HTTP thật trên localhost. **Chưa xác minh dọn gói/cài/khôi phục trên Sony thật.** Trước bản phát hành public, thử toàn luồng trên TV có thể phục hồi, kiểm tra remote/HDMI/network sau reboot, rồi ghi model + firmware + kết quả vào release notes.
+Kiểm thử tự động mô phỏng TV và kiểm tra HTTP thật trên localhost. **Chưa xác minh dọn gói/cài/khôi phục trên Sony thật.** Trước khi gọi là bản ổn định, thử toàn luồng trên TV có thể phục hồi, kiểm tra remote/HDMI/network sau reboot, rồi ghi model + firmware + kết quả vào release notes.
+
+Chi tiết thay đổi và bằng chứng kiểm thử: [Ghi chú bản 0.4](docs/CHANGELOG-0.4.md), [Kiểm tra](docs/VALIDATION.md).
 
 ## Nguồn
 

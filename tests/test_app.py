@@ -34,8 +34,12 @@ class FakeAdb:
         self.empty_settings = False
         self.animations = {key:"1.0" for key in app.ANIMATION_KEYS}
         self.refuse_animation = ""
+        self.crash_home = False
+        self.restart_home = False
 
     def run(self, *args, **kwargs):
+        if len(args) == 4 and args[2] == "shell":
+            return self.shell(args[1], args[3], **kwargs)
         self.calls.append(args)
         if args[0] == "connect":
             return "connected to " + args[1]
@@ -88,7 +92,11 @@ class FakeAdb:
             return ""
         if cmd == "cat /proc/stat":
             count=sum(1 for c in self.calls if c==cmd)
-            return "cpu  100 0 100 800 0 0 0 0\n" if count==1 else "cpu  120 0 110 870 0 0 0 0\n"
+            return f"cpu  {100+20*(count-1)} 0 {100+10*(count-1)} {800+70*(count-1)} 0 0 0 0\n"
+        if cmd.startswith("pidof "):
+            if self.crash_home:
+                return ""
+            return str(100 + (len(self.calls) if self.restart_home else 0))
         if cmd == "cat /proc/meminfo":
             return "MemTotal: 2048000 kB\nMemAvailable: 512000 kB\n"
         if cmd == "df -k /data":
@@ -184,6 +192,7 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(app.UserError,"khôi phục|chưa xác nhận"):
             self.service.install({"backup":rid})
         self.assertEqual(self.adb.states["com.xiaomi.statistic"],1)
+        self.service.recover_due()
         self.assertTrue(json.loads(self.service.record_path(rid).read_text(encoding="utf-8"))["restored"])
 
     def test_other_device_cannot_restore(self):
@@ -328,7 +337,8 @@ class WorkflowTests(unittest.TestCase):
     def test_keep_change_cancels_deadline_but_preserves_manual_restore(self):
         rid = self.prepare()
         self.service.apply({"backup":rid,"packages":["com.miui.tv.analytics"]})
-        self.service.keep({"backup":rid})
+        with patch("app.time.sleep"):
+            self.service.keep({"backup":rid, "checks": sorted(app.MANUAL_CHECKS)})
         self.service.recover_due(app.time.time()+1000)
         self.assertEqual(self.adb.states["com.miui.tv.analytics"],3)
         self.service.restore({"backup":rid})

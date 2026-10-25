@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import lru_cache
 import hashlib
 import ipaddress
 import json
@@ -10,6 +11,7 @@ from pathlib import Path
 import re
 import secrets
 import socket
+import statistics
 import subprocess
 import threading
 import time
@@ -24,6 +26,7 @@ COMPONENT = "com.gathin.tvhome/.MainActivity"
 PACKAGE = "com.gathin.tvhome"
 TRIAL_SECONDS = 180
 ANIMATION_KEYS = ("window_animation_scale", "transition_animation_scale", "animator_duration_scale")
+MANUAL_CHECKS = {"remote", "video", "audio", "inputs", "network"}
 HOME = "-a android.intent.action.MAIN -c android.intent.category.HOME"
 PKG_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+\Z")
 COMP_RE = re.compile(r"[A-Za-z_][\w.]*/[\w.$]+\Z")
@@ -31,6 +34,31 @@ COMP_RE = re.compile(r"[A-Za-z_][\w.]*/[\w.$]+\Z")
 
 class UserError(Exception):
     pass
+
+
+class TrialExpired(UserError):
+    pass
+
+
+@lru_cache(maxsize=4)
+def reference_data(root):
+    """Read immutable community reference files once per application directory."""
+    return (json.loads((root / "catalog.json").read_text(encoding="utf-8")),
+            json.loads((root / "profiles.json").read_text(encoding="utf-8"))["profiles"])
+
+
+def java_property(value):
+    """ASCII Java .properties, including surrogate pairs and Windows path escapes."""
+    result = []
+    for char in str(value):
+        if char in "\\:=#! " or char in "\t\n\r\f":
+            result.append({"\t": r"\t", "\n": r"\n", "\r": r"\r", "\f": r"\f"}.get(char, "\\" + char))
+        elif 32 <= ord(char) <= 126:
+            result.append(char)
+        else:
+            encoded = char.encode("utf-16-be")
+            result.extend("\\u" + encoded[i:i+2].hex() for i in range(0, len(encoded), 2))
+    return "".join(result)
 
 
 def atomic_json(path, value):
@@ -127,15 +155,14 @@ def match_profiles(device, profiles):
                 score += weight
         if not score:
             continue
-        fingerprint = device.get("firmware", "").lower()
-        for signature in set(re.findall(r"[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+", profile["header"])):
-            if len(signature) >= 8 and signature.lower() in fingerprint:
-                score += 2
         scored.append((score, profile))
     if not scored:
         return []
     highest = max(score for score, _ in scored)
-    return [profile for score, profile in scored if score == highest]
+    fingerprint = device.get("firmware", "")
+    return [dict(profile, compatibility=("firmware_verified" if fingerprint and
+        fingerprint in profile.get("verifiedFingerprints", []) else "model_only"))
+        for score, profile in scored if score == highest]
 
 
 def protected(pkg, detail, homes):
@@ -187,8 +214,7 @@ class Service:
         self.target = ""
         self.device = None
         self.identity = ""
-        self.catalog = json.loads((ROOT / "catalog.json").read_text(encoding="utf-8"))
-        self.profiles = json.loads((ROOT / "profiles.json").read_text(encoding="utf-8"))["profiles"]
+        self.catalog, self.profiles = reference_data(ROOT)
         self.profile_match = []
         self.candidates = []
         self.lock = threading.Lock()
@@ -197,6 +223,7 @@ class Service:
         self.last_result = None
         self.recovery_stop = threading.Event()
         self.recovery_active = False
+        self.command_deadline = None
 
     def note(self, message):
         self.log.append({"time": time.strftime("%H:%M:%S"), "text": message})
@@ -205,10 +232,28 @@ class Service:
     def start(self, action, params):
         if not self.lock.acquire(blocking=False):
             raise UserError("Đang thực hiện một bước. Chờ kết quả rồi tiếp tục.")
+        try:
+            trials = self.recovery_records()
+            # Long work cannot enter the serialized device queue during a trial.
+            if trials:
+                pending = any(r.get("recovery_pending") or r.get("trial_until", 0) <= time.time() for _, r in trials)
+                allowed = {"restore", "connect", "pair"} if pending else {"restore", "keep", "verify", "screenshot", "reboot"}
+                if action not in allowed:
+                    raise UserError("Giữ hoặc hoàn tác lần thử trước khi chạy bước khác. Ưu tiên thời gian cho tự khôi phục.")
+        except Exception:
+            self.lock.release()
+            raise
         self.job = {"action": action, "status": "running", "error": "", "result": None}
         self.note("Bắt đầu: " + action)
         def work():
             try:
+                if trials and action in {"connect", "pair"}:
+                    # Reconnection is allowed for pending recovery, with a finite budget.
+                    self.command_deadline = time.monotonic() + (15 if action == "connect" else 25)
+                if action in {"keep", "verify", "screenshot", "reboot"}:
+                    active = [r for _, r in self.recovery_records() if r["identity"] == self.identity]
+                    if active:
+                        self.set_deadline(min(r["trial_until"] for r in active), cap=12)
                 result = getattr(self, action)(params)
                 self.last_result = result
                 self.job.update(status="done", result=result)
@@ -217,14 +262,43 @@ class Service:
                 msg = str(e) if isinstance(e, UserError) else f"{type(e).__name__}: {e}"
                 self.job.update(status="error", error=msg)
                 self.note("Dừng: " + msg)
+                if action == "verify":
+                    for path, record in self.recovery_records():
+                        if record["identity"] == self.identity:
+                            record["recovery_pending"] = True
+                            record["recovery_reason"] = msg[:1500]
+                            atomic_json(path, record)
             finally:
+                self.command_deadline = None
+                # An expired read or check gives the device queue straight to recovery.
+                try:
+                    self.recover_due(only_due=True)
+                except Exception as error:
+                    self.note("Khôi phục sẽ thử lại: " + str(error))
                 self.lock.release()
         threading.Thread(target=work, daemon=True).start()
+
+    def set_deadline(self, until, cap=None):
+        seconds = max(0, until - time.time())
+        if cap is not None:
+            seconds = min(seconds, cap)
+        self.command_deadline = time.monotonic() + seconds
+
+    def run_adb(self, *args, timeout=30, **kwargs):
+        if self.command_deadline is not None:
+            remaining = self.command_deadline - time.monotonic()
+            if remaining <= 0:
+                raise TrialExpired("Đã hết thời gian dành cho bước kiểm tra/thử. Chuyển sang tự khôi phục.")
+            timeout = min(timeout, remaining)
+        result = self.adb.run(*args, timeout=timeout, **kwargs)
+        if self.command_deadline is not None and time.monotonic() >= self.command_deadline:
+            raise TrialExpired("Đã hết thời gian thử. Chuyển sang tự khôi phục.")
+        return result
 
     def sh(self, cmd, timeout=30):
         if not self.target:
             raise UserError("Kết nối TV ở bước 2 trước.")
-        return self.adb.shell(self.target, cmd, timeout=timeout)
+        return self.run_adb("-s", self.target, "shell", cmd, timeout=timeout)
 
     def read_identity(self):
         # No serial number or IP is exposed in the public device summary.
@@ -244,7 +318,11 @@ class Service:
             "firmware": values["ro.build.fingerprint"], "secure": self.sh("getprop ro.adb.secure") != "0"}
 
     def guard(self):
-        identity, _ = self.read_identity()
+        serial = self.sh("getprop ro.serialno")
+        if not serial or serial.lower() in ("unknown", "null"):
+            serial = self.sh("settings get secure android_id")
+        fingerprint = self.sh("getprop ro.build.fingerprint")
+        identity = hashlib.sha256((serial + "|" + fingerprint).encode()).hexdigest()
         if not self.identity or identity != self.identity:
             raise UserError("Thiết bị hoặc firmware đã đổi. Kết nối và phân tích lại; không dùng bản sao lưu của TV khác.")
 
@@ -321,7 +399,8 @@ class Service:
                 continue
             if self.profile_match and not all(any(e["package"] == pkg for e in profile["packages"]) for profile in self.profile_match):
                 continue
-            if item.get("requireProfile") and not self.profile_match:
+            if item.get("requireProfile") and (not self.profile_match or
+                    not all(profile["compatibility"] == "firmware_verified" for profile in self.profile_match)):
                 continue
             detail = self.sh("dumpsys package " + pkg)
             if not detail.strip() or "Unable to find" in detail or protected(pkg, detail, homes):
@@ -330,7 +409,7 @@ class Service:
             found.append(item)
         self.candidates = found
         return {"candidates": found, "installed": len(installed), "disabled": len(disabled),
-            "profiles": [{k: profile[k] for k in ("id", "tv", "brand", "os", "notes", "source")} for profile in self.profile_match],
+            "profiles": [{k: profile[k] for k in ("id", "tv", "brand", "os", "notes", "source", "compatibility")} for profile in self.profile_match],
             "message": "Chỉ liệt kê các gói trong quy tắc đã rà soát và thực sự có trên TV. Không suy đoán theo tên hãng."}
 
     def record_path(self, record_id):
@@ -345,12 +424,13 @@ class Service:
                 r = json.loads(path.read_text(encoding="utf-8"))
                 if r["identity"] == self.identity:
                     found.append({"id": r["id"], "created": r["created"], "model": r["model"],
+                        "createdOrder": r.get("created_ns", 0),
                         "changes": len(r["changes"]), "home": bool(r.get("home_pending")), "restored": r.get("restored", False),
                         "trialUntil": r.get("trial_until", 0), "recoveryPending": r.get("recovery_pending", False)})
                     found[-1]["settings"] = len(r.get("settings_changes", []))
             except (OSError, ValueError, KeyError):
                 pass
-        return sorted(found, key=lambda r: r["created"], reverse=True)
+        return sorted(found, key=lambda r: (r["created"], r["createdOrder"]), reverse=True)
 
     def backup(self, p):
         self.guard()
@@ -368,7 +448,9 @@ class Service:
             if (not raw.strip() and name != "disabled") or re.search(r"(?im)^(error|exception|permission denial)", raw):
                 raise UserError("Không sao lưu được " + name + ". Chưa thay đổi TV.")
             (path.parent / (name + ".txt")).write_text(raw, encoding="utf-8")
+        previous = next((r["id"] for r in self.records() if not r["restored"] and (r["changes"] or r["settings"] or r["home"])), None)
         record = {"id": rid, "identity": self.identity, "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_ns": time.time_ns(), "parent": previous,
             "model": self.device["model"], "home_before": current, "changes": [], "home_pending": False,
             "restored": False, "launcher_installed": False, "target": self.target,
             "trial_until": 0, "recovery_pending": False}
@@ -397,12 +479,24 @@ class Service:
         record["recovery_pending"] = False
         record["health_grace"] = 0
         atomic_json(path, record)
+        self.set_deadline(record["trial_until"])
         self.note("Bắt đầu thử 3 phút. Không bấm Giữ thay đổi thì sẽ tự hoàn tác.")
 
     def transaction(self, p, operation):
+        # Reject before entering the failure/rollback handler: no new mutation exists.
+        if self.recovery_records():
+            raise UserError("Có lần thử chưa xác nhận. Giữ hoặc khôi phục trước khi thử tiếp.")
+        path, record = self.load_record(p.get("backup"))
+        p = dict(p)
+        if record.get("confirmed"):
+            # A new durable baseline preserves everything the user already accepted.
+            p["backup"] = self.backup({})["backup"]
         try:
-            return operation(p)
+            result = operation(p)
+            result.setdefault("backup", p["backup"])
+            return result
         except Exception as error:
+            self.command_deadline = None
             try:
                 path = self.record_path(p.get("backup"))
                 record = json.loads(path.read_text(encoding="utf-8"))
@@ -413,12 +507,14 @@ class Service:
             record["recovery_pending"] = True
             record["recovery_reason"] = str(error)[:1500]
             atomic_json(path, record)
-            self.note("Bước thử thất bại. Đang tự khôi phục bản lưu trước buổi thiết lập.")
+            self.note("Bước thử thất bại. Đang tự khôi phục riêng lần thử này.")
             try:
                 self.restore({"backup": record["id"]})
             except Exception:
                 raise UserError(str(error) + " Chưa thể tự khôi phục vì TV chưa phản hồi/xác minh chưa đạt. Giữ ứng dụng mở; sẽ tự thử lại mỗi 5 giây khi kết nối trở lại.") from error
-            raise UserError(str(error) + " Đã tự khôi phục các thay đổi được ghi nhận về trước buổi thiết lập.") from error
+            raise UserError(str(error) + " Đã tự khôi phục các thay đổi của lần thử này.") from error
+        finally:
+            self.command_deadline = None
 
     def apply(self, p):
         return self.transaction(p, self.apply_changes)
@@ -496,7 +592,19 @@ class Service:
         return {"backup": record["id"], "message": "Đang thử hiệu ứng chuyển động 0,5 lần trong 3 phút. Thao tác chuyển màn hình có thể ngắn hơn; đây không phải tăng tốc CPU hoặc phát video."}
 
     def restore(self, p):
+        self.command_deadline = None
         path, r = self.load_record(p.get("backup"))
+        # Older records remain usable, but undo checkpoints newest first.
+        others = {item["id"]: json.loads(self.record_path(item["id"]).read_text(encoding="utf-8")) for item in self.records()}
+        for other in others.values():
+            if other.get("restored") or not (other["changes"] or other.get("settings_changes") or other.get("home_pending")):
+                continue
+            parent, visited = other.get("parent"), set()
+            while parent and parent not in visited:
+                if parent == r["id"]:
+                    raise UserError("Khôi phục lần thay đổi mới hơn trước, rồi mới quay về bản lưu này.")
+                visited.add(parent)
+                parent = others.get(parent, {}).get("parent")
         for change in reversed(r.get("settings_changes", [])):
             if change.get("status") == "restored":
                 continue
@@ -548,14 +656,24 @@ class Service:
         expected = PACKAGE if record.get("home_pending") else record["home_before"].split("/")[0]
         if home.split("/")[0] != expected:
             raise UserError("Home đã đổi ngoài kế hoạch trong thời gian thử.")
+        if record.get("home_pending"):
+            self.home_process(expected)
 
     def keep(self, p):
         path, record = self.load_record(p.get("backup"))
+        if not isinstance(p.get("checks"), list) or not MANUAL_CHECKS <= set(x for x in p["checks"] if isinstance(x, str)):
+            raise UserError("Xác nhận đã thử điều khiển, video, âm thanh, đầu vào và mạng trước khi Giữ.")
         if record.get("recovery_pending") or not record.get("trial_until") or record["trial_until"] <= time.time():
             raise UserError("Lần thử đã hết hạn hoặc đang khôi phục. Chờ hoàn tác xong trước khi thử lại.")
         try:
+            self.set_deadline(record["trial_until"], cap=12)
             self.check_trial(record)
+            expected = PACKAGE if record.get("home_pending") else record["home_before"].split("/")[0]
+            self.probe_home(expected)
+            if time.time() >= record["trial_until"]:
+                raise TrialExpired("Lần thử đã hết hạn trong khi kiểm tra; không giữ thay đổi.")
         except Exception as error:
+            self.command_deadline = None
             record["recovery_pending"] = True
             record["recovery_reason"] = str(error)
             atomic_json(path, record)
@@ -567,6 +685,7 @@ class Service:
         record["trial_until"] = 0
         record["confirmed"] = True
         atomic_json(path, record)
+        self.command_deadline = None
         return {"message": "Đã giữ thay đổi sau kiểm tra. Bạn vẫn có thể mở Khôi phục để quay lại bản lưu."}
 
     def recovery_records(self):
@@ -580,7 +699,7 @@ class Service:
                 continue
         return records
 
-    def recover_due(self, now=None):
+    def recover_due(self, now=None, only_due=False):
         """Called with the service lock held; durable records also survive app restarts."""
         now = time.time() if now is None else now
         for path, record in self.recovery_records():
@@ -595,10 +714,14 @@ class Service:
             recovery.identity = record["identity"]
             recovery.note = self.note
             due = record.get("recovery_pending") or record.get("trial_until", 0) <= now
+            if only_due and not due:
+                continue
             if not due and record.get("health_grace", 0) > now:
                 continue
             try:
-                self.adb.run("connect", target, timeout=8)
+                if not due:
+                    recovery.set_deadline(record["trial_until"], cap=8)
+                recovery.run_adb("connect", target, timeout=8)
                 if not due:
                     recovery.check_trial(record)
                     continue
@@ -630,13 +753,31 @@ class Service:
         if not COMP_RE.fullmatch(value):
             raise UserError("Không có component Home hợp lệ để khôi phục.")
         self.sh("cmd package set-home-activity --user 0 " + value)
+        self.probe_home(value.split("/")[0])
+
+    def home_process(self, package):
+        if not PKG_RE.fullmatch(package):
+            raise UserError("Tên ứng dụng Home không hợp lệ.")
+        pids = self.sh("pidof " + package).split()
+        if not pids or any(not pid.isdigit() for pid in pids):
+            raise UserError("Không xác minh được tiến trình Home đang chạy. Giữ nguyên hoặc hoàn tác.")
+        return set(pids)
+
+    def probe_home(self, package):
+        """An explicit Home test; background health checks never steal video focus."""
         self.sh("input keyevent 3")
-        time.sleep(2)
-        resolved = component(self.sh("cmd package resolve-activity --brief " + HOME))
-        focus = self.sh("dumpsys activity activities")
-        focused_lines = "\n".join(line for line in focus.splitlines() if re.search(r"mResumedActivity|topResumedActivity|mFocusedApp", line))
-        if resolved.split("/")[0] != value.split("/")[0] or value.split("/")[0] + "/" not in focused_lines:
-            raise UserError("TV chưa chuyển Home như yêu cầu. Hãy chọn ứng dụng Home trong Cài đặt của TV.")
+        previous = None
+        for _ in range(2):
+            time.sleep(1)
+            resolved = component(self.sh("cmd package resolve-activity --brief " + HOME))
+            focus = self.sh("dumpsys activity activities")
+            focused_lines = "\n".join(line for line in focus.splitlines() if re.search(r"mResumedActivity|topResumedActivity|mFocusedApp", line))
+            if resolved.split("/")[0] != package or package + "/" not in focused_lines or re.search(r"AppErrorDialog|AppNotRespondingDialog|Application (?:Error|Not Responding)", focus, re.I):
+                raise UserError("TV chưa chuyển Home như yêu cầu hoặc Home đang báo lỗi. Hãy kiểm tra Cài đặt Home trên TV.")
+            current = self.home_process(package)
+            if previous is not None and previous != current:
+                raise UserError("Home khởi động lại giữa hai lần kiểm tra. Chưa giữ thay đổi.")
+            previous = current
 
     def install(self, p):
         return self.transaction(p, self.install_changes)
@@ -659,7 +800,7 @@ class Service:
             raise UserError("TV đã có CleanYourTV. Bản này giữ nguyên launcher đã có; bạn có thể chọn nó trong Cài đặt Home của TV.")
         self.note("Gửi launcher lên TV. Hãy xác nhận cài đặt nếu TV hỏi.")
         self.begin_trial(path, r)
-        self.adb.run("-s", self.target, "push", str(apk), "/data/local/tmp/cleanuptv-launcher.apk", timeout=90)
+        self.run_adb("-s", self.target, "push", str(apk), "/data/local/tmp/cleanuptv-launcher.apk", timeout=90)
         out = self.sh("pm install -r /data/local/tmp/cleanuptv-launcher.apk", timeout=120)
         if "Success" not in out:
             raise UserError("TV từ chối cài launcher: " + out[-1000:] + ". Home gốc vẫn được giữ.")
@@ -739,7 +880,7 @@ class Service:
         run_batch([str(sdkmanager), "--sdk_root=" + str(sdk), "platforms;android-34", "build-tools;34.0.0"], "Chuẩn bị Android SDK 34", b"y\n" * 100)
         if not (sdk / "platforms/android-34/android.jar").is_file() or not (sdk / "build-tools/34.0.0/aapt2.exe").is_file():
             raise UserError("SDK chưa cài đầy đủ. Xem .local/build.log rồi thử lại.")
-        (launcher / "local.properties").write_text("sdk.dir=" + sdk.as_posix() + "\n", encoding="ascii")
+        (launcher / "local.properties").write_text("sdk.dir=" + java_property(sdk.as_posix()) + "\n", encoding="ascii")
         run_batch([str(launcher / "gradlew.bat"), "--no-daemon", "--console=plain", "assembleRelease"], "Build launcher từ source đã khóa phiên bản")
         apk = launcher / "app/build/outputs/apk/release/app-release.apk"
         if not apk.is_file():
@@ -753,22 +894,27 @@ class Service:
     def verify(self, p):
         self.guard()
         current, _ = self.homes()
+        self.probe_home(current.split("/")[0])
         return {"home": current, "disabled": sorted(package_set(self.sh("pm list packages -d --user 0"))),
-            "message": "ADB và Home phản hồi. Âm thanh, HDMI, ứng dụng xem phim và điều khiển cần được thử trực tiếp."}
+            "message": "Đã mở Home và kiểm tra focus/tiến trình qua hai lần lấy mẫu. Âm thanh, HDMI, ứng dụng xem phim và điều khiển cần thử trực tiếp; phép kiểm tra ngắn chưa bảo đảm ổn định lâu dài."}
 
     def measure(self, p):
         self.guard()
         phase = p.get("phase")
         if phase not in ("before", "after"):
             raise UserError("Chọn đo trước hoặc sau thay đổi.")
+        samples = []
         first = cpu_ticks(self.sh("cat /proc/stat"))
-        time.sleep(1)
-        second = cpu_ticks(self.sh("cat /proc/stat"))
+        for _ in range(3):
+            time.sleep(1)
+            second = cpu_ticks(self.sh("cat /proc/stat"))
+            if first and second and second[0] > first[0] and second[1] >= first[1]:
+                samples.append(max(0, min(100, 100 * (1 - (second[1] - first[1]) / (second[0] - first[0])))))
+            first = second
         result = parse_resources(self.sh("cat /proc/meminfo"), self.sh("df -k /data"))
-        cpu = None
-        if first and second and second[0] > first[0] and second[1] >= first[1]:
-            cpu = round(max(0, min(100, 100 * (1 - (second[1] - first[1]) / (second[0] - first[0])))), 1)
-        result.update(cpuPercent=cpu, measured=time.strftime("%Y-%m-%d %H:%M:%S"))
+        cpu = round(statistics.median(samples), 1) if samples else None
+        result.update(cpuPercent=cpu, cpuSamples=len(samples), cpuRange=[round(min(samples), 1), round(max(samples), 1)] if samples else None,
+            measured=time.strftime("%Y-%m-%d %H:%M:%S"))
         path = self.data / "measurements" / (self.identity + ".json")
         report = self.measurement_report()
         report[phase] = result
@@ -786,7 +932,7 @@ class Service:
 
     def screenshot(self, p):
         self.guard()
-        image = self.adb.run("-s", self.target, "exec-out", "screencap", "-p", timeout=30, binary=True)
+        image = self.run_adb("-s", self.target, "exec-out", "screencap", "-p", timeout=30, binary=True)
         if not image.startswith(b"\x89PNG\r\n\x1a\n") or len(image) > 20_000_000:
             raise UserError("TV không trả ảnh PNG hợp lệ. Một số nội dung DRM không chụp được.")
         self.data.mkdir(parents=True, exist_ok=True)
@@ -797,10 +943,9 @@ class Service:
         self.guard()
         for path, record in self.recovery_records():
             if record["identity"] == self.identity and not record.get("recovery_pending"):
-                record["health_grace"] = time.time() + 90
-                record["trial_until"] = time.time() + TRIAL_SECONDS
+                record["health_grace"] = min(time.time() + 90, record["trial_until"])
                 atomic_json(path, record)
-        self.adb.run("-s", self.target, "reboot", timeout=15)
+        self.run_adb("-s", self.target, "reboot", timeout=15)
         return {"message": "Đã gửi khởi động lại. Chờ TV lên rồi kết nối lại và kiểm tra Home/ứng dụng."}
 
     def closed(self, p):
@@ -818,7 +963,7 @@ class Service:
         return {"device": self.device, "target": self.target, "job": self.job, "log": self.log,
             "candidates": self.candidates, "backups": self.records() if self.identity else [],
             "database": {"profiles": len(self.profiles), "brands": len({p["brand"] for p in self.profiles}), "rules": len(self.catalog)},
-            "profiles": [{k: p[k] for k in ("id", "tv", "os", "notes", "source")} for p in self.profile_match],
+            "profiles": [{k: p[k] for k in ("id", "tv", "os", "notes", "source", "compatibility")} for p in self.profile_match],
             "trials": [{"id": r["id"], "model":r["model"], "until":r.get("trial_until",0),
                 "pending":r.get("recovery_pending",False), "sameDevice":r["identity"]==self.identity} for _,r in self.recovery_records()],
             "recoveryActive": self.recovery_active,
