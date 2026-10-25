@@ -1,0 +1,7 @@
+.runtime/
+.local/
+.research/
+__pycache__/
+*.pyc
+dist/
+.venv/

@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parent
 COMPONENT = "com.gathin.tvhome/.MainActivity"
 PACKAGE = "com.gathin.tvhome"
 TRIAL_SECONDS = 180
+ANIMATION_KEYS = ("window_animation_scale", "transition_animation_scale", "animator_duration_scale")
 HOME = "-a android.intent.action.MAIN -c android.intent.category.HOME"
 PKG_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+\Z")
 COMP_RE = re.compile(r"[A-Za-z_][\w.]*/[\w.$]+\Z")
@@ -76,6 +77,29 @@ def enabled_state(raw):
     if not m or int(m[1]) not in range(5):
         raise UserError("Không đọc được trạng thái gói cho user 0. Dừng để giữ nguyên TV.")
     return int(m[1])
+
+
+def cpu_ticks(raw):
+    match = re.search(r"(?m)^cpu\s+([0-9 ]+)$", raw)
+    if not match:
+        return None
+    values = [int(x) for x in match[1].split()][:8]
+    if len(values) < 4:
+        return None
+    return sum(values), values[3] + (values[4] if len(values) > 4 else 0)
+
+
+def parse_resources(memory, storage):
+    values = {k: int(v) for k, v in re.findall(r"(?m)^(MemTotal|MemAvailable):\s+(\d+)\s+kB", memory)}
+    free = total = None
+    for line in storage.splitlines():
+        fields = line.split()
+        if len(fields) >= 4 and all(v.isdigit() for v in fields[1:4]):
+            total, free = int(fields[1]) / 1024, int(fields[3]) / 1024
+    return {"memoryTotalMiB": round(values["MemTotal"] / 1024, 1) if "MemTotal" in values else None,
+        "memoryAvailableMiB": round(values["MemAvailable"] / 1024, 1) if "MemAvailable" in values else None,
+        "storageTotalMiB": round(total, 1) if total is not None else None,
+        "storageFreeMiB": round(free, 1) if free is not None else None}
 
 
 def normalized(value):
@@ -323,6 +347,7 @@ class Service:
                     found.append({"id": r["id"], "created": r["created"], "model": r["model"],
                         "changes": len(r["changes"]), "home": bool(r.get("home_pending")), "restored": r.get("restored", False),
                         "trialUntil": r.get("trial_until", 0), "recoveryPending": r.get("recovery_pending", False)})
+                    found[-1]["settings"] = len(r.get("settings_changes", []))
             except (OSError, ValueError, KeyError):
                 pass
         return sorted(found, key=lambda r: r["created"], reverse=True)
@@ -347,6 +372,7 @@ class Service:
             "model": self.device["model"], "home_before": current, "changes": [], "home_pending": False,
             "restored": False, "launcher_installed": False, "target": self.target,
             "trial_until": 0, "recovery_pending": False}
+        record["settings_changes"] = []
         atomic_json(path, record)
         return {"backup": rid, "message": "Đã sao lưu thông tin và trạng thái. Đây không phải bản sao firmware hay dữ liệu ứng dụng."}
 
@@ -364,6 +390,8 @@ class Service:
         return path, r
 
     def begin_trial(self, path, record):
+        if record.get("recovery_pending") or any(c["status"] == "pending" for c in record["changes"] + record.get("settings_changes", [])):
+            raise UserError("Có thay đổi chưa xác nhận. Khôi phục trước khi bắt đầu lần thử mới.")
         record["target"] = self.target
         record["trial_until"] = time.time() + TRIAL_SECONDS
         record["recovery_pending"] = False
@@ -432,8 +460,57 @@ class Service:
             atomic_json(path, r)
         return {"changed": len(plan), "backup": r["id"]}
 
+    def optimize(self, p):
+        return self.transaction(p, self.optimize_changes)
+
+    def optimize_changes(self, p):
+        path, record = self.load_record(p.get("backup"))
+        if p.get("preset") != "reduced_motion":
+            raise UserError("Chỉ hỗ trợ tùy chọn giảm hiệu ứng chuyển động 0,5 lần.")
+        if any(c["status"] == "pending" for c in record["changes"]) or any(c["status"] == "pending" for c in record.get("settings_changes", [])):
+            raise UserError("Có thay đổi chưa xác nhận; cần khôi phục trước khi tiếp tục.")
+        if record.get("settings_changes"):
+            raise UserError("Bản lưu này đã có thay đổi hiệu ứng. Giữ hoặc khôi phục trước khi thử tiếp.")
+        existing = {}
+        for key in ANIMATION_KEYS:
+            value = self.sh("settings get global " + key).strip()
+            if value != "null" and not re.fullmatch(r"\d+(?:\.\d+)?", value):
+                raise UserError("Không đọc được hiệu ứng gốc. Giữ nguyên thiết lập TV.")
+            # Do not increase motion when the owner already chose 0 or a smaller value.
+            if value == "null" or float(value) > 0.5:
+                existing[key] = value
+        if not existing:
+            return {"message": "Hiệu ứng hiện đã ở mức 0,5 lần hoặc thấp hơn. Không thay đổi thiết lập."}
+        self.begin_trial(path, record)
+        for key, value in existing.items():
+            change = {"key": key, "before": value, "after": "0.5", "status": "pending"}
+            record["settings_changes"].append(change)
+            atomic_json(path, record)
+            self.note("Giảm hiệu ứng và xác minh: " + key)
+            self.sh("settings put global " + key + " 0.5")
+            after = self.sh("settings get global " + key).strip()
+            if not re.fullmatch(r"\d+(?:\.\d+)?", after) or float(after) != 0.5:
+                raise UserError("TV không chấp nhận thay đổi hiệu ứng. Dừng và tự khôi phục.")
+            change["status"] = "changed"
+            atomic_json(path, record)
+        return {"backup": record["id"], "message": "Đang thử hiệu ứng chuyển động 0,5 lần trong 3 phút. Thao tác chuyển màn hình có thể ngắn hơn; đây không phải tăng tốc CPU hoặc phát video."}
+
     def restore(self, p):
         path, r = self.load_record(p.get("backup"))
+        for change in reversed(r.get("settings_changes", [])):
+            if change.get("status") == "restored":
+                continue
+            key, before = change["key"], change["before"]
+            if key not in ANIMATION_KEYS or (before != "null" and not re.fullmatch(r"\d+(?:\.\d+)?", before)):
+                raise UserError("Nhật ký thiết lập hiệu ứng không hợp lệ.")
+            command = "settings delete global " + key if before == "null" else "settings put global " + key + " " + before
+            self.sh(command)
+            actual = self.sh("settings get global " + key).strip()
+            equal = actual == before or (actual != "null" and before != "null" and re.fullmatch(r"\d+(?:\.\d+)?", actual) and float(actual) == float(before))
+            if not equal:
+                raise UserError("Chưa xác minh khôi phục hiệu ứng " + key + ". Sẽ thử lại khi TV phản hồi.")
+            change["status"] = "restored"
+            atomic_json(path, r)
         for change in reversed(r["changes"]):
             if change.get("status") == "restored":
                 continue
@@ -459,6 +536,11 @@ class Service:
 
     def check_trial(self, record):
         self.guard()
+        for change in record.get("settings_changes", []):
+            if change["status"] == "changed":
+                value = self.sh("settings get global " + change["key"]).strip()
+                if not re.fullmatch(r"\d+(?:\.\d+)?", value) or float(value) != 0.5:
+                    raise UserError("Thiết lập hiệu ứng không còn đúng trong lần thử.")
         disabled = package_set(self.sh("pm list packages -d --user 0"))
         if any(c["status"] == "disabled" and c["package"] not in disabled for c in record["changes"]):
             raise UserError("Một gói không còn ở trạng thái đã xác minh trong lần thử.")
@@ -595,7 +677,7 @@ class Service:
             except UserError:
                 raise UserError(str(first) + " Chưa xác nhận trở lại Home gốc. Dùng nút Khôi phục khi kết nối còn hoạt động.")
             raise UserError(str(first) + " Đã trở lại Home gốc; bản này không tắt launcher gốc hoặc setup wizard.")
-        return {"backup": r["id"], "message": "Đã cài và xác minh Home mới đang hiển thị. Đang thử 3 phút: thử nút Home thật rồi bấm Giữ thay đổi nếu hoạt động ổn."}
+        return {"backup": r["id"], "message": "Đã cài và xác minh Home mới đang hiển thị. Đang thử 3 phút: thử nút Home thật rồi bấm Giữ thay đổi nếu hoạt động bình thường."}
 
     def build(self, p):
         if self.recovery_records():
@@ -672,7 +754,35 @@ class Service:
         self.guard()
         current, _ = self.homes()
         return {"home": current, "disabled": sorted(package_set(self.sh("pm list packages -d --user 0"))),
-            "message": "ADB và Home phản hồi. Âm thanh, HDMI, ứng dụng xem phim và remote cần bạn thử trực tiếp."}
+            "message": "ADB và Home phản hồi. Âm thanh, HDMI, ứng dụng xem phim và điều khiển cần được thử trực tiếp."}
+
+    def measure(self, p):
+        self.guard()
+        phase = p.get("phase")
+        if phase not in ("before", "after"):
+            raise UserError("Chọn đo trước hoặc sau thay đổi.")
+        first = cpu_ticks(self.sh("cat /proc/stat"))
+        time.sleep(1)
+        second = cpu_ticks(self.sh("cat /proc/stat"))
+        result = parse_resources(self.sh("cat /proc/meminfo"), self.sh("df -k /data"))
+        cpu = None
+        if first and second and second[0] > first[0] and second[1] >= first[1]:
+            cpu = round(max(0, min(100, 100 * (1 - (second[1] - first[1]) / (second[0] - first[0])))), 1)
+        result.update(cpuPercent=cpu, measured=time.strftime("%Y-%m-%d %H:%M:%S"))
+        path = self.data / "measurements" / (self.identity + ".json")
+        report = self.measurement_report()
+        report[phase] = result
+        atomic_json(path, report)
+        return {"message": "Đã ghi nhận tài nguyên tại thời điểm đo. Đây không phải phép đo tốc độ mở ứng dụng, độ mượt hoặc phần trăm tăng tốc.", "measurement": result}
+
+    def measurement_report(self):
+        if not self.identity:
+            return {}
+        path = self.data / "measurements" / (self.identity + ".json")
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
 
     def screenshot(self, p):
         self.guard()
@@ -712,10 +822,11 @@ class Service:
             "trials": [{"id": r["id"], "model":r["model"], "until":r.get("trial_until",0),
                 "pending":r.get("recovery_pending",False), "sameDevice":r["identity"]==self.identity} for _,r in self.recovery_records()],
             "recoveryActive": self.recovery_active,
+            "measurements": self.measurement_report(),
             "adbReady": self.adb.path.is_file(), "launcherReady": (ROOT / ".runtime/launcher.apk").is_file()}
 
 
-ACTIONS = {"connect", "pair", "discover", "analyze", "backup", "apply", "restore", "keep", "build", "install", "verify", "screenshot", "reboot", "closed"}
+ACTIONS = {"connect", "pair", "discover", "analyze", "backup", "apply", "optimize", "measure", "restore", "keep", "build", "install", "verify", "screenshot", "reboot", "closed"}
 
 
 def make_server(service, port=0):
