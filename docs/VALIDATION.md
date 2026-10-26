@@ -1,4 +1,14 @@
-# Kiểm tra bản 0.4 — 25/10/2026
+# Kiểm tra bản 0.5 — 26/10/2026
+
+## Kết quả bản 0.5
+
+- 88 kiểm thử Python bao gồm hồi quy cũ, nhật ký/hoàn tác thiết lập cá nhân và thành phố, chặn tên gói/khóa/đường dẫn lạ, JPEG quá lớn, giới hạn endpoint tìm địa điểm và mã tác vụ riêng để giao diện không xử lý nhầm kết quả cũ.
+- Hỗ trợ công cụ khác: chẩn đoán chỉ đọc, thông báo đúng khi thiếu bản lưu, bỏ Home không phải gói hệ thống/factory, bắt buộc xác nhận, chỉ bật gói đã chọn, giữ hoặc hoàn tác đúng trạng thái 2/3/4; chuyển Home về trước rồi mới tắt gói, không tắt Home còn hoạt động khi bước quay lại thất bại. Khôi phục thủ công cũng lưu ý định để thử lại sau sự cố.
+- Launcher có phần mở rộng và mô-đun thời tiết đã build bằng JDK 17/SDK 34/Gradle 8.9; `testReleaseUnitTest lintRelease assembleRelease` thành công cho cả hai. Không có lỗi lint chặn build; không có phụ thuộc launcher mới hoặc quyền Internet cho launcher.
+- Python portable với `-I app.py --help` đã tải được mô-đun nội bộ mới. Các bản lưu cũ vẫn được đọc.
+- Giao diện trình duyệt với Sony mô phỏng: đọc, sửa 6 cột/tên/lịch âm, tìm thành phố qua API thật, áp dụng và Giữ; thử chuyển Home hệ thống đang tắt rồi hoàn tác riêng lần hỗ trợ. Bản ghi xác nhận lần cá nhân hóa đã Giữ không bị hoàn tác. Biểu mẫu giữ được dữ liệu vừa nhập khi bắt đầu tìm thành phố.
+- Chưa có TV thật để xác minh D-pad, trình chọn ảnh, quyền provider trên từng firmware, khả năng cập nhật APK khác chữ ký, thời tiết hoặc Home sau reboot. Build thành công không thay cho kiểm tra phần cứng.
+
 
 ## Kết quả bản 0.4
 

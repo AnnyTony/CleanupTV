@@ -256,7 +256,7 @@ class RegressionTests(unittest.TestCase):
         for file in (runtime / "jdk/pinned/bin/java.exe", launcher / "gradlew.bat", runtime / "android-sdk/platforms/android-34/android.jar", runtime / "android-sdk/build-tools/34.0.0/aapt2.exe", launcher / "app/build/outputs/apk/release/app-release.apk"):
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_bytes(b"fixture")
-        with patch("app.ROOT", root), patch("app.subprocess.run") as run:
+        with patch("app.ROOT", root), patch("app.prepare_overlay", return_value=launcher), patch("app.subprocess.run") as run:
             run.return_value.returncode = 0
             self.service.build({"licenses": True})
         self.assertIn(r"\u00f2", (launcher / "local.properties").read_text(encoding="ascii"))

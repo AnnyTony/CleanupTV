@@ -279,7 +279,7 @@ class WorkflowTests(unittest.TestCase):
         runtime.mkdir(parents=True)
         data = b"test-only-apk"
         (runtime / "launcher.apk").write_bytes(data)
-        app.atomic_json(runtime / "launcher-receipt.json", {"sha256":app.hashlib.sha256(data).hexdigest()})
+        app.atomic_json(runtime / "launcher-receipt.json", {"sha256":app.hashlib.sha256(data).hexdigest(), "overlay":app.overlay_hash(root)})
         return root
 
     def test_install_rolls_back_when_vendor_ignores_home_preference(self):

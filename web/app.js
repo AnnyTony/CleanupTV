@@ -9,6 +9,8 @@ const manual = new Set();
 const trialChecks = new Map();
 const requiredChecks = [['remote','Điều khiển và nút Home hoạt động'],['video','Ứng dụng xem phim phát hình bình thường'],['audio','Âm thanh và âm lượng hoạt động'],['inputs','HDMI / truyền hình hoạt động, hoặc tôi không sử dụng'],['network','Wi-Fi / mạng dây hoạt động']];
 const jobLabels = {connect:'Kết nối và đọc thông tin TV',pair:'Ghép đôi với TV',discover:'Tìm TV qua gỡ lỗi không dây',backup:'Sao lưu trạng thái TV',analyze:'Kiểm tra các gói thực sự có trên TV',apply:'Dọn các gói bạn đã chọn',build:'Chuẩn bị và build launcher',install:'Cài và kiểm tra Màn hình chính mới',restore:'Khôi phục thay đổi',optimize:'Thử giảm hiệu ứng chuyển động',measure:'Đo tài nguyên TV',keep:'Kiểm tra và giữ thay đổi',verify:'Kiểm tra phản hồi từ TV',screenshot:'Chụp màn hình TV',reboot:'Khởi động lại TV',closed:'Kiểm tra cổng gỡ lỗi'};
+Object.assign(jobLabels,{personal_read:'Đọc thiết lập cá nhân',personal_apply:'Thử giao diện cá nhân',personal_upload:'Thêm ảnh nền vào TV',personal_open:'Mở thiết lập trên TV',city_search:'Tìm thành phố',build_weather:'Build mô-đun Thời tiết',install_weather:'Cài mô-đun Thời tiết',update_launcher:'Cập nhật và thử launcher'});
+Object.assign(jobLabels,{rescue_inspect:'Kiểm tra Home hệ thống',rescue_home:'Sao lưu và thử về Home hệ thống'});
 const button = (label, action, kind='', disabled=false) => `<button class="btn ${kind}" data-action="${action}" ${disabled?'disabled':''}>${label}</button>`;
 const notice = (text, warning=false) => `<div class="notice ${warning?'warning':''}"><span class="notice-icon">${warning?'!':'ⓘ'}</span><p>${text}</p></div>`;
 function toast(text){$('toast').textContent=text;$('toast').classList.remove('hidden');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').classList.add('hidden'),6000);}
@@ -75,7 +77,7 @@ function remember(){for(const id of ['host','port','pairPort','code'])if($(id))f
 function go(n){remember();if(step===3&&n===4&&(selection.size||launcher||reducedMotion))completed.add(3);step=n;render();window.scrollTo({top:0,behavior:'smooth'});}
 async function run(action,params={}){
   remember();if(busy)return;
-  busy=true;lastJob=null;dismissedJob='';
+  busy=true;dismissedJob='';
   document.querySelectorAll('button[data-action],button[data-restore],button[data-keep]').forEach(b=>b.disabled=true);
   try{
     const response=await fetch('/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','X-CleanupTV-Token':token},body:JSON.stringify(params)});
@@ -97,6 +99,8 @@ async function poll(){
       lastJob=JSON.stringify(j);
       if(j.status==='done'){
         const r=j.result||{};
+        if(window.CleanupPersonalize)window.CleanupPersonalize.result(j);
+        if(window.CleanupRescue)window.CleanupRescue.result(j);
         if(j.action==='connect'){completed.add(1);backup='';analysisDone=false;selection.clear();manual.clear();shot='';closedResult=null;completed.delete(2);completed.delete(3);completed.delete(4);}
         if(j.action==='backup'){backup=r.backup;completed.add(2);}
         if(['apply','optimize','install'].includes(j.action)&&r.backup){backup=r.backup;trialChecks.delete(backup);if(state.trials?.length)completed.delete(4);}

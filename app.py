@@ -12,6 +12,7 @@ import re
 import secrets
 import socket
 import statistics
+import sys
 import subprocess
 import threading
 import time
@@ -22,6 +23,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))  # local modules also work with portable Python's -I mode
+from personalize import PersonalizationMixin, WEATHER, prepare_overlay, overlay_hash
+from rescue import RescueMixin
 COMPONENT = "com.gathin.tvhome/.MainActivity"
 PACKAGE = "com.gathin.tvhome"
 TRIAL_SECONDS = 180
@@ -207,7 +211,9 @@ class Adb:
         return self.run("-s", serial, "shell", cmd, timeout=timeout)
 
 
-class Service:
+class Service(PersonalizationMixin, RescueMixin):
+    error = UserError
+    write_record = staticmethod(atomic_json)
     def __init__(self, data=None, adb=None):
         self.data = Path(data or ROOT / ".local")
         self.adb = adb or Adb()
@@ -243,7 +249,7 @@ class Service:
         except Exception:
             self.lock.release()
             raise
-        self.job = {"action": action, "status": "running", "error": "", "result": None}
+        self.job = {"id": secrets.token_hex(8), "action": action, "status": "running", "error": "", "result": None}
         self.note("Bắt đầu: " + action)
         def work():
             try:
@@ -428,6 +434,7 @@ class Service:
                         "changes": len(r["changes"]), "home": bool(r.get("home_pending")), "restored": r.get("restored", False),
                         "trialUntil": r.get("trial_until", 0), "recoveryPending": r.get("recovery_pending", False)})
                     found[-1]["settings"] = len(r.get("settings_changes", []))
+                    found[-1]["settings"] += len(r.get("personal_changes", []))
             except (OSError, ValueError, KeyError):
                 pass
         return sorted(found, key=lambda r: (r["created"], r["createdOrder"]), reverse=True)
@@ -450,6 +457,7 @@ class Service:
             (path.parent / (name + ".txt")).write_text(raw, encoding="utf-8")
         previous = next((r["id"] for r in self.records() if not r["restored"] and (r["changes"] or r["settings"] or r["home"])), None)
         record = {"id": rid, "identity": self.identity, "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "application": "Thanh Tùng Tiên Sinh Cleanup", "createdVersion": "0.5.0",
             "created_ns": time.time_ns(), "parent": previous,
             "model": self.device["model"], "home_before": current, "changes": [], "home_pending": False,
             "restored": False, "launcher_installed": False, "target": self.target,
@@ -597,7 +605,7 @@ class Service:
         # Older records remain usable, but undo checkpoints newest first.
         others = {item["id"]: json.loads(self.record_path(item["id"]).read_text(encoding="utf-8")) for item in self.records()}
         for other in others.values():
-            if other.get("restored") or not (other["changes"] or other.get("settings_changes") or other.get("home_pending")):
+            if other.get("restored") or not (other["changes"] or other.get("settings_changes") or other.get("personal_changes") or other.get("home_pending")):
                 continue
             parent, visited = other.get("parent"), set()
             while parent and parent not in visited:
@@ -605,6 +613,21 @@ class Service:
                     raise UserError("Khôi phục lần thay đổi mới hơn trước, rồi mới quay về bản lưu này.")
                 visited.add(parent)
                 parent = others.get(parent, {}).get("parent")
+        # Manual restoration must also survive a failure or an application restart.
+        r["recovery_pending"] = True
+        r["target"] = self.target
+        atomic_json(path, r)
+        self.rescue_undo(path, r)
+        for change in reversed(r.get("personal_changes", [])):
+            if change["status"] == "restored":
+                continue
+            result = self.personal_call(change["target"], "write", change["before"])
+            if result["values"] != change["before"]:
+                raise UserError("Chưa xác minh khôi phục giao diện/thời tiết. Sẽ thử lại.")
+            change["status"] = "restored"
+            atomic_json(path, r)
+        if r.get("personal_changes"):
+            self.probe_home(r["home_before"].split("/")[0])
         for change in reversed(r.get("settings_changes", [])):
             if change.get("status") == "restored":
                 continue
@@ -644,6 +667,9 @@ class Service:
 
     def check_trial(self, record):
         self.guard()
+        for change in record.get("personal_changes", []):
+            if change["status"] == "changed" and self.personal_call(change["target"])["values"] != change["after"]:
+                raise UserError("Thiết lập cá nhân đã đổi trong thời gian thử.")
         for change in record.get("settings_changes", []):
             if change["status"] == "changed":
                 value = self.sh("settings get global " + change["key"]).strip()
@@ -653,7 +679,7 @@ class Service:
         if any(c["status"] == "disabled" and c["package"] not in disabled for c in record["changes"]):
             raise UserError("Một gói không còn ở trạng thái đã xác minh trong lần thử.")
         home, _ = self.homes()
-        expected = PACKAGE if record.get("home_pending") else record["home_before"].split("/")[0]
+        expected = (record.get("rescue_change", {}).get("package", PACKAGE) if record.get("home_pending") else record["home_before"].split("/")[0])
         if home.split("/")[0] != expected:
             raise UserError("Home đã đổi ngoài kế hoạch trong thời gian thử.")
         if record.get("home_pending"):
@@ -668,7 +694,7 @@ class Service:
         try:
             self.set_deadline(record["trial_until"], cap=12)
             self.check_trial(record)
-            expected = PACKAGE if record.get("home_pending") else record["home_before"].split("/")[0]
+            expected = (record.get("rescue_change", {}).get("package", PACKAGE) if record.get("home_pending") else record["home_before"].split("/")[0])
             self.probe_home(expected)
             if time.time() >= record["trial_until"]:
                 raise TrialExpired("Lần thử đã hết hạn trong khi kiểm tra; không giữ thay đổi.")
@@ -793,10 +819,10 @@ class Service:
         if not apk.is_file() or not receipt.is_file():
             raise UserError("Build launcher trước khi cài.")
         metadata = json.loads(receipt.read_text())
-        if hashlib.sha256(apk.read_bytes()).hexdigest() != metadata["sha256"]:
-            raise UserError("APK thay đổi sau khi build. Build lại trước khi cài.")
+        if hashlib.sha256(apk.read_bytes()).hexdigest() != metadata["sha256"] or metadata.get("overlay") != overlay_hash(ROOT):
+            raise UserError("APK thay đổi hoặc chưa có phần cá nhân hóa đúng bản. Build lại trước khi cài.")
         existing = PACKAGE in package_set(self.sh("pm list packages --user 0"))
-        if existing and not r.get("launcher_installed"):
+        if existing and not r.get("launcher_installed") and not (p.get("update") is True and metadata.get("overlay") == overlay_hash(ROOT)):
             raise UserError("TV đã có CleanYourTV. Bản này giữ nguyên launcher đã có; bạn có thể chọn nó trong Cài đặt Home của TV.")
         self.note("Gửi launcher lên TV. Hãy xác nhận cài đặt nếu TV hỏi.")
         self.begin_trial(path, r)
@@ -819,6 +845,34 @@ class Service:
                 raise UserError(str(first) + " Chưa xác nhận trở lại Home gốc. Dùng nút Khôi phục khi kết nối còn hoạt động.")
             raise UserError(str(first) + " Đã trở lại Home gốc; bản này không tắt launcher gốc hoặc setup wizard.")
         return {"backup": r["id"], "message": "Đã cài và xác minh Home mới đang hiển thị. Đang thử 3 phút: thử nút Home thật rồi bấm Giữ thay đổi nếu hoạt động bình thường."}
+
+    def update_launcher(self, p):
+        return self.install(dict(p, update=True))
+
+    def build_weather(self, p):
+        return self.build(dict(p, component="weather"))
+
+    def install_weather(self, p):
+        if self.recovery_records():
+            raise UserError("Giữ hoặc hoàn tác lần thử trước khi cài mô-đun.")
+        self.guard()
+        if self.device["sdk"] < 26:
+            raise UserError("Mô-đun cần Android 8 trở lên.")
+        apk = ROOT / ".runtime/weather.apk"
+        receipt = ROOT / ".runtime/weather-receipt.json"
+        if not apk.is_file() or not receipt.is_file():
+            raise UserError("Build mô-đun Thời tiết trước khi cài.")
+        metadata = json.loads(receipt.read_text())
+        if metadata.get("overlay") != overlay_hash(ROOT) or hashlib.sha256(apk.read_bytes()).hexdigest() != metadata.get("sha256"):
+            raise UserError("APK không còn khớp bản build. Build lại trước khi cài.")
+        self.run_adb("-s", self.target, "push", str(apk), "/data/local/tmp/cleanuptv-weather.apk", timeout=90)
+        result = self.sh("pm install -r /data/local/tmp/cleanuptv-weather.apk", timeout=120)
+        if "Success" not in result:
+            raise UserError("TV từ chối cài Thời tiết: " + result[-1000:])
+        if WEATHER not in package_set(self.sh("pm list packages --user 0")):
+            raise UserError("Chưa xác minh mô-đun Thời tiết đã cài.")
+        self.personal_call("weather")
+        return {"message": "Đã cài Thời tiết, giữ dữ liệu nếu là cập nhật. Mô-đun không đổi Home; có thể tắt trong phần Ứng dụng trên TV."}
 
     def build(self, p):
         if self.recovery_records():
@@ -854,7 +908,8 @@ class Service:
         if not jdks or not sources:
             raise UserError("Không tìm được JDK hoặc source sau giải nén.")
         java = jdks[0].parent.parent
-        launcher = sources[0].parent
+        weather = p.get("component") == "weather"
+        launcher = prepare_overlay(ROOT, sources[0].parent.parent, weather=weather)
         sdk = runtime / "android-sdk"
         sdk.mkdir(exist_ok=True)
         env = os.environ.copy()
@@ -881,14 +936,14 @@ class Service:
         if not (sdk / "platforms/android-34/android.jar").is_file() or not (sdk / "build-tools/34.0.0/aapt2.exe").is_file():
             raise UserError("SDK chưa cài đầy đủ. Xem .local/build.log rồi thử lại.")
         (launcher / "local.properties").write_text("sdk.dir=" + java_property(sdk.as_posix()) + "\n", encoding="ascii")
-        run_batch([str(launcher / "gradlew.bat"), "--no-daemon", "--console=plain", "assembleRelease"], "Build launcher từ source đã khóa phiên bản")
+        run_batch([str(launcher / "gradlew.bat"), "--no-daemon", "--console=plain", "testReleaseUnitTest", "lintRelease", "assembleRelease"], "Build và kiểm tra " + ("Thời tiết" if weather else "launcher") + " từ source đã khóa phiên bản")
         apk = launcher / "app/build/outputs/apk/release/app-release.apk"
         if not apk.is_file():
             raise UserError("Build không tạo APK.")
-        output = runtime / "launcher.apk"
+        output = runtime / ("weather.apk" if weather else "launcher.apk")
         output.write_bytes(apk.read_bytes())
-        atomic_json(runtime / "launcher-receipt.json", {"sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
-            "source": manifest["source"]["name"]})
+        atomic_json(runtime / ("weather-receipt.json" if weather else "launcher-receipt.json"), {"sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
+            "source": manifest["source"]["name"], "overlay": overlay_hash(ROOT)})
         return {"message": "Đã build và kiểm tra APK. Bước này chưa cài gì lên TV."}
 
     def verify(self, p):
@@ -960,6 +1015,12 @@ class Service:
             return {"closed": None, "message": "Chưa kết luận được: TV không phản hồi (có thể đang tắt hoặc đổi IP). Không coi đây là xác nhận đã đóng ADB."}
 
     def status(self):
+        def ready(name):
+            try:
+                metadata = json.loads((ROOT / (".runtime/" + name + "-receipt.json")).read_text())
+                return (ROOT / (".runtime/" + name + ".apk")).is_file() and metadata.get("overlay") == overlay_hash(ROOT)
+            except (OSError, ValueError):
+                return False
         return {"device": self.device, "target": self.target, "job": self.job, "log": self.log,
             "candidates": self.candidates, "backups": self.records() if self.identity else [],
             "database": {"profiles": len(self.profiles), "brands": len({p["brand"] for p in self.profiles}), "rules": len(self.catalog)},
@@ -968,15 +1029,22 @@ class Service:
                 "pending":r.get("recovery_pending",False), "sameDevice":r["identity"]==self.identity} for _,r in self.recovery_records()],
             "recoveryActive": self.recovery_active,
             "measurements": self.measurement_report(),
-            "adbReady": self.adb.path.is_file(), "launcherReady": (ROOT / ".runtime/launcher.apk").is_file()}
+            "weatherReady": ready("weather"),
+            "adbReady": self.adb.path.is_file(), "launcherReady": ready("launcher")}
 
 
 ACTIONS = {"connect", "pair", "discover", "analyze", "backup", "apply", "optimize", "measure", "restore", "keep", "build", "install", "verify", "screenshot", "reboot", "closed"}
+ACTIONS |= {"personal_read", "personal_apply", "personal_upload", "personal_open", "city_search", "build_weather", "install_weather", "update_launcher"}
+ACTIONS |= {"rescue_inspect", "rescue_home"}
 
 
 def make_server(service, port=0):
     token = secrets.token_urlsafe(32)
     class Handler(BaseHTTPRequestHandler):
+        def setup(self):
+            super().setup()
+            self.connection.settimeout(10)
+
         def log_message(self, *args):
             pass
 
@@ -1010,6 +1078,8 @@ def make_server(service, port=0):
                 log = service.data / "build.log"
                 return self.send(200, log.read_bytes()[-30000:] if log.is_file() else b"Chua co log build.", "text/plain; charset=utf-8")
             assets = {"/": ("index.html", "text/html; charset=utf-8"), "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+                "/personalize.js": ("personalize.js", "text/javascript; charset=utf-8"),
+                "/rescue.js": ("rescue.js", "text/javascript; charset=utf-8"),
                 "/style.css": ("style.css", "text/css; charset=utf-8")}
             if path in assets:
                 name, mime = assets[path]
@@ -1018,13 +1088,17 @@ def make_server(service, port=0):
 
         def do_POST(self):
             allowed_origins = {f"http://127.0.0.1:{self.server.server_port}", f"http://localhost:{self.server.server_port}"}
-            if not self.valid_host() or self.headers.get("Origin") not in allowed_origins or not secrets.compare_digest(self.headers.get("X-CleanupTV-Token", ""), token):
-                return self.send(403, {"error": "Chỉ nhận thao tác từ giao diện CleanupTV đang mở."})
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                if length <= 0 or length > 16384:
+                limit = 700000 if urlsplit(self.path).path == "/api/personal_upload" else 16384
+                if length <= 0 or length > limit:
                     raise UserError("Yêu cầu quá lớn hoặc rỗng.")
-                p = json.loads(self.rfile.read(length))
+                # Drain a bounded body before refusing it; unread TCP bytes can reset
+                # the socket on Windows and hide a 403 response from the client.
+                body = self.rfile.read(length)
+                if not self.valid_host() or self.headers.get("Origin") not in allowed_origins or not secrets.compare_digest(self.headers.get("X-CleanupTV-Token", ""), token):
+                    return self.send(403, {"error": "Chỉ nhận thao tác từ giao diện CleanupTV đang mở."})
+                p = json.loads(body)
                 if not isinstance(p, dict):
                     raise UserError("Yêu cầu không hợp lệ.")
                 action = urlsplit(self.path).path.removeprefix("/api/")

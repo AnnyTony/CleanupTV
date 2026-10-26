@@ -1,8 +1,8 @@
-# CleanupTV
+# CleanupTV · Thanh Tùng Tiên Sinh Cleanup
 
 Ứng dụng tiếng Việt chạy trên máy tính Windows, hướng dẫn kết nối, kiểm tra tài nguyên, giảm một số dịch vụ không cần thiết và thử màn hình chính [CleanYourTV](https://github.com/Gathin23/cleanyourtv) trên Android TV / Google TV.
 
-**Bản 0.4.0 là bản thử nghiệm. Chưa được xác minh trên TV thật.** Các kiểm thử tự động dùng thiết bị mô phỏng. Cơ sở hồ sơ cộng đồng giúp đối chiếu, không phải chứng nhận tương thích hay bảo đảm TV không gặp lỗi.
+**Bản 0.5.0 là bản thử nghiệm. Chưa được xác minh trên TV thật.** Các kiểm thử tự động dùng thiết bị mô phỏng. Cơ sở hồ sơ cộng đồng giúp đối chiếu, không phải chứng nhận tương thích hay bảo đảm TV không gặp lỗi.
 
 ![Giao diện CleanupTV](docs/preview.png)
 
@@ -17,6 +17,22 @@
 5. Xong việc, tắt các tùy chọn gỡ lỗi trên TV theo hướng dẫn. Đóng cửa sổ BAT hoặc Ctrl+C để dừng ứng dụng trên máy.
 
 Lấy bản tải về bằng **Code → Download ZIP** trên trang GitHub của kho này. Lưu ý: phải giải nén xong mới chạy START.bat. Cần Windows 10/11 64-bit, trình duyệt và Internet cho lần chuẩn bị đầu tiên. Máy tính và TV phải cùng mạng nội bộ.
+
+## Cá nhân hóa và hỗ trợ TV đã chỉnh bằng công cụ khác
+
+Tại thanh bên, mở **Cá nhân hóa TV** để tự chỉnh bằng máy tính, hoặc bấm **Mở Cá nhân hóa trên TV** để dùng điều khiển. Nếu đã cài launcher bản cũ, mở phần Chuẩn bị lần đầu, xác nhận giấy phép SDK, build rồi **Sao lưu, cập nhật và thử**; kiểm tra và Giữ trước khi chỉnh tiếp.
+
+- Bố cục 4–7 cột, tên/lời chào, màu nền, hiệu ứng và độ tối ảnh.
+- Hiện ngày dương và ngày âm Việt Nam UTC+7; lịch tính offline trên TV, không phải lịch tháng hay lịch tốt/xấu.
+- Gửi ảnh từ máy tính đã được thu nhỏ; chọn ảnh đã lưu hoặc nhập từ TV/USB khi TV có trình chọn tệp. Có nút Theo giao diện mặc định.
+- Tùy chọn build/cài mô-đun **Thời tiết**, chọn thành phố bằng TV hoặc máy tính. Đây là ô mở trang thời tiết, không phải nhiệt độ tự cập nhật liên tục trên Home. Tên địa điểm/tọa độ được gửi đến Open-Meteo khi sử dụng chức năng tương ứng; không tự lấy GPS.
+- Thay đổi từ máy tính có bản lưu và lần thử 3 phút. Chỉnh trực tiếp bằng remote được lưu ngay, không cần máy tính hay gỡ lỗi; có thể trở về mặc định trên TV. Ảnh và APK đã thêm được giữ khi hoàn tác lựa chọn.
+
+Mục **Hỗ trợ về Home hệ thống** dành cho TV đã chỉnh bằng công cụ khác hoặc đã mất bản lưu. Nếu gỡ lỗi đã tắt, phải bật lại trên TV và kết nối trước. Chương trình đọc danh sách Home hệ thống, cho chọn và thử khi xác minh được đường quay về. Không có bản lưu trước đó thì **không thể khôi phục chính xác mọi thay đổi cũ**; không tự bật lại hàng loạt gói, không factory reset, không tự tải launcher hãng. Rút điện không phải khôi phục cài đặt gốc.
+
+Thông báo ghi rõ: “Không tìm thấy bản sao lưu của Thanh Tùng Tiên Sinh Cleanup trên máy tính này…”; không quy kết người dùng chưa từng sử dụng chương trình chỉ vì thiếu tệp. Nếu có bản lưu đúng thiết bị/firmware, ưu tiên chức năng **Mở khôi phục**.
+
+Hướng dẫn cập nhật, giới hạn, nguồn dữ liệu và cách hai giao diện dùng chung thiết lập: [Ghi chú bản 0.5](docs/CHANGELOG-0.5.md).
 
 ## CleanYourTV thực hiện những việc gì?
 
@@ -66,7 +82,7 @@ Nếu Windows chặn BAT vừa tải, kiểm tra nguồn repository trước khi
 - Nếu được chọn, tự tải JDK/SDK/source đã khóa SHA256, build launcher tại máy, cài và kiểm tra Home đang hiển thị.
 - Chụp ảnh trực tiếp từ TV, kiểm tra ADB/Home và kiểm tra cổng gỡ lỗi sau khi tắt.
 
-## Phạm vi bản 0.4
+## Phạm vi bản 0.5
 
 Đây là **bản thử nghiệm cần kiểm tra trên TV thật trước khi phát hành rộng rãi**.
 
@@ -116,7 +132,7 @@ HTTP server bind `127.0.0.1` với cổng tự chọn, kiểm tra Host/Origin v�
 
 ## Phát triển và đóng gói
 
-Backend chỉ dùng thư viện chuẩn Python 3.11+; frontend HTML/CSS/JS thuần. Có thể chạy bằng Python đã cài:
+Backend dùng các tệp app.py, personalize.py và rescue.py, chỉ cần thư viện chuẩn Python 3.11+; frontend HTML/CSS/JS thuần. Khi đóng gói cần giữ launcher-overlay/ để build phần cá nhân hóa. Có thể chạy bằng Python đã cài:
 
 ```powershell
 python app.py --open
@@ -126,7 +142,7 @@ node --check web/app.js
 
 Chạy bằng Python có sẵn vẫn cần ADB tại `.runtime/adb/platform-tools/adb.exe`; dùng START.bat để tự chuẩn bị.
 
-Tạo ZIP `dist/CleanupTV-Windows-0.4.0.zip` để đưa vào GitHub Releases:
+Tạo ZIP `dist/CleanupTV-Windows-0.5.0.zip` để đưa vào GitHub Releases:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Thời tiết</string>
+    <string name="feels_like">Cảm nhận %1$d°</string>
+    <string name="humidity">Độ ẩm %1$d%%</string>
+    <string name="wind">Gió %1$d km/h</string>
+    <string name="high_low">%1$d° / %2$d°</string>
+    <string name="aqi_line">Chất lượng không khí %1$d · %2$s</string>
+    <string name="updated">Cập nhật %1$s · Open-Meteo</string>
+    <string name="change_city">Đổi thành phố</string>
+    <string name="loading">Đang tải thời tiết…</string>
+    <string name="offline">Chưa kết nối được Open-Meteo. Kiểm tra Internet trên TV; chương trình thử lại sau 5 phút.</string>
+    <string name="pick_title">Chọn thành phố</string>
+    <string name="pick_hint">Tên thành phố, ví dụ Cần Thơ</string>
+    <string name="pick_search">Tìm</string>
+    <string name="pick_none">Không tìm thấy địa điểm %1$s</string>
+    <string name="pick_first">Chọn một thành phố để xem thời tiết.</string>
+    <string name="aqi_good">Tốt</string>
+    <string name="aqi_moderate">Trung bình</string>
+    <string name="aqi_sensitive">Không tốt cho nhóm nhạy cảm</string>
+    <string name="aqi_unhealthy">Không tốt</string>
+    <string name="aqi_very_unhealthy">Rất không tốt</string>
+    <string name="aqi_hazardous">Nguy hại</string>
+    <string name="sky_clear">Trời quang</string>
+    <string name="sky_sunny">Có nắng</string>
+    <string name="sky_mostly_clear">Ít mây</string>
+    <string name="sky_mostly_sunny">Phần lớn có nắng</string>
+    <string name="sky_partly_cloudy">Mây rải rác</string>
+    <string name="sky_cloudy">Nhiều mây</string>
+    <string name="sky_fog">Sương mù</string>
+    <string name="sky_drizzle">Mưa phùn</string>
+    <string name="sky_freezing_drizzle">Mưa phùn đóng băng</string>
+    <string name="sky_light_rain">Mưa nhỏ</string>
+    <string name="sky_rain">Mưa</string>
+    <string name="sky_heavy_rain">Mưa lớn</string>
+    <string name="sky_freezing_rain">Mưa đóng băng</string>
+    <string name="sky_light_snow">Tuyết nhẹ</string>
+    <string name="sky_snow">Tuyết</string>
+    <string name="sky_heavy_snow">Tuyết dày</string>
+    <string name="sky_snow_grains">Tuyết hạt</string>
+    <string name="sky_showers">Mưa rào</string>
+    <string name="sky_snow_showers">Tuyết rào</string>
+    <string name="sky_thunderstorm">Dông</string>
+</resources>
