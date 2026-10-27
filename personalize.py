@@ -13,7 +13,8 @@ import zipfile
 WEATHER = "io.github.sumyabazar1.weather"
 LAUNCHER = "com.gathin.tvhome"
 KEYS = {"columns", "rows_below_dock", "animations", "advanced_effects", "dock_opacity", "wallpaper_choice",
-        "cyt_lunar", "cyt_name", "cyt_greeting", "cyt_background", "cyt_dim"}
+        "cyt_lunar", "cyt_name", "cyt_greeting", "cyt_background", "cyt_dim",
+        "cyt_gold", "cyt_fx", "cyt_fuel", "cyt_currency", "cyt_fuel_zone"}
 
 
 def overlay_hash(root):
@@ -58,7 +59,35 @@ def prepare_overlay(root, source, weather=False):
                 activity = activity.replace(anchor, replacement)
             (java_dir / "WeatherActivity.java").write_text(activity, encoding="utf-8")
         else:
-            files = ["CleanupPreferences.java", "CleanupProvider.java", "CleanupSettingsActivity.java"]
+            files = ["CleanupPreferences.java", "CleanupProvider.java", "CleanupSettingsActivity.java", "CleanupMarket.java", "CleanupMarketData.java"]
+            android_manifest = android_manifest.replace('<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />', '<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />')
+            # Always begin with pristine MainActivity, layout and Gradle files from the pinned ZIP.
+            main = original("app/src/main/java/com/gathin/tvhome/MainActivity.java")
+            anchors = {
+                "    private static final int LAUNCHER_SETTINGS_REQUEST = 42;": "    private CleanupMarket cleanupMarket;\n    private static final int LAUNCHER_SETTINGS_REQUEST = 42;",
+                "        setContentView(R.layout.activity_main);": "        setContentView(R.layout.activity_main);\n        cleanupMarket = new CleanupMarket(this);",
+                "        if (showStats) startStats();": "        cleanupMarket.resume();\n        if (showStats) startStats();",
+                "        super.onPause();": "        super.onPause();\n        if (cleanupMarket != null) cleanupMarket.pause();",
+                "        super.onDestroy();": "        super.onDestroy();\n        if (cleanupMarket != null) cleanupMarket.pause();",
+            }
+            for anchor, replacement in anchors.items():
+                if main.count(anchor) != 1:
+                    raise ValueError("Source Home khác phiên bản đã rà soát; chưa thêm bảng giá.")
+                main = main.replace(anchor, replacement)
+            (java_dir / "MainActivity.java").write_text(main, encoding="utf-8")
+            layout_path = project / "app/src/main/res/layout/activity_main.xml"
+            layout = original("app/src/main/res/layout/activity_main.xml")
+            anchor = "        <!-- The wrapper clips at the grid's edge;"
+            if layout.count(anchor) != 1:
+                raise ValueError("Source bố cục Home không khớp.")
+            layout = layout.replace(anchor, '<LinearLayout android:id="@+id/cleanupMarket" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:visibility="gone" />\n\n' + anchor)
+            layout_path.write_text(layout, encoding="utf-8")
+            gradle = original("app/build.gradle")
+            gradle = gradle.replace("testImplementation 'junit:junit:4.13.2'", "testImplementation 'junit:junit:4.13.2'\n    testImplementation 'org.json:json:20240303'")
+            (project / "app/build.gradle").write_text(gradle, encoding="utf-8")
+            tests = project / "app/src/test/java/com/gathin/tvhome"
+            tests.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(root / "launcher-overlay/CleanupMarketDataTest.java", tests / "CleanupMarketDataTest.java")
             declaration = '<provider android:name=".CleanupProvider" android:authorities="com.gathin.tvhome.cleanup" android:exported="true" android:permission="android.permission.WRITE_SECURE_SETTINGS" /><activity android:name=".CleanupSettingsActivity" android:exported="true" android:screenOrientation="landscape" />'
             config = original("app/src/main/java/com/gathin/tvhome/Config.java")
             anchor = "        // A festive skin comes only from a theme;"
@@ -95,7 +124,7 @@ def prepare_overlay(root, source, weather=False):
 def valid_preferences(values):
     if not isinstance(values, dict) or not set(values) <= KEYS:
         raise ValueError("Có mục giao diện không được hỗ trợ.")
-    ranges = {"columns": (4, 7), "rows_below_dock": (0, 3), "dock_opacity": (30, 100), "cyt_dim": (0, 90)}
+    ranges = {"columns": (4, 7), "rows_below_dock": (0, 3), "dock_opacity": (30, 100), "cyt_dim": (0, 90), "cyt_fuel_zone": (1, 2)}
     for key, value in values.items():
         if value is None:
             continue
@@ -103,7 +132,7 @@ def valid_preferences(values):
             low, high = ranges[key]
             if type(value) is not int or not low <= value <= high:
                 raise ValueError("Giá trị giao diện ngoài phạm vi: " + key)
-        elif key in {"animations", "advanced_effects", "cyt_lunar", "cyt_greeting"}:
+        elif key in {"animations", "advanced_effects", "cyt_lunar", "cyt_greeting", "cyt_gold", "cyt_fx", "cyt_fuel"}:
             if type(value) is not bool:
                 raise ValueError("Giá trị bật/tắt không hợp lệ.")
         elif not isinstance(value, str):
@@ -114,6 +143,8 @@ def valid_preferences(values):
             raise ValueError("Màu nền phải có dạng #RRGGBB.")
         elif key == "wallpaper_choice" and value != "none" and not re.fullmatch(r"[A-Za-z0-9_.-]+\.(jpg|jpeg|png|webp)", value):
             raise ValueError("Tên ảnh nền không hợp lệ.")
+        elif key == "cyt_currency" and value not in {"USD", "EUR", "JPY", "AUD", "GBP", "SGD", "THB", "CNY", "KRW", "CAD"}:
+            raise ValueError("Ngoại tệ chưa được hỗ trợ.")
     return values
 
 

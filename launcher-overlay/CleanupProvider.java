@@ -17,7 +17,7 @@ public final class CleanupProvider extends ContentProvider {
                 if (arg == null || arg.length() > 8192) throw new IllegalArgumentException("Invalid payload");
                 CleanupPreferences.write(getContext(), new JSONObject(new String(Base64.decode(arg, Base64.DEFAULT), java.nio.charset.StandardCharsets.UTF_8)));
             } else if (!"read".equals(method)) throw new IllegalArgumentException("Unknown method");
-            JSONObject value = new JSONObject().put("version", 1).put("values", CleanupPreferences.read(getContext()));
+            JSONObject value = new JSONObject().put("version", 1).put("marketVersion", 1).put("values", CleanupPreferences.read(getContext()));
             Config config = Config.load(getContext());
             value.put("effective", new JSONObject().put("columns",config.columns).put("cyt_lunar",config.lunarDate)
                 .put("cyt_name",config.greetingName).put("cyt_greeting",config.showGreeting).put("animations",config.animations)

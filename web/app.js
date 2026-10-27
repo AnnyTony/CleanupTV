@@ -79,11 +79,12 @@ async function run(action,params={}){
   remember();if(busy)return;
   busy=true;dismissedJob='';
   document.querySelectorAll('button[data-action],button[data-restore],button[data-keep]').forEach(b=>b.disabled=true);
+  window.CleanupPersonalize?.state();
   try{
     const response=await fetch('/api/'+action,{method:'POST',headers:{'Content-Type':'application/json','X-CleanupTV-Token':token},body:JSON.stringify(params)});
     const result=await response.json();if(!response.ok)throw Error(result.error||'Không thực hiện được.');
     await poll();
-  }catch(e){busy=false;toast(e.message);render();}
+  }catch(e){busy=false;toast(e.message);render();window.CleanupPersonalize?.state();}
 }
 async function poll(){
   if(poll.running)return;
@@ -119,7 +120,7 @@ async function poll(){
     }else if(wasBusy!==busy)render();
     else renderJob();
   }catch(e){if(busy)toast('Mất liên lạc với ứng dụng trên máy. Giữ cửa sổ BAT mở; mở lại giao diện để xem kết quả.');}
-  finally{poll.running=false;}
+  finally{poll.running=false;window.CleanupPersonalize?.state();}
 }
 document.addEventListener('click',async event=>{
   const keep=event.target.closest('[data-keep]');if(keep){await run('keep',{backup:keep.dataset.keep,checks:[...(trialChecks.get(keep.dataset.keep)||[])]});return;}

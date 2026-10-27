@@ -20,3 +20,10 @@
 .sidebar {overflow-y:auto;}
 #rescue-open {margin:0 0 12px;text-align:left;}
 #rescue-panel select {width:100%;padding:12px;border:1px solid #d9dfd5;border-radius:8px;font:inherit;}
+/* Optional native Home price cards: this block only illustrates placement. */
+.market-fields{border:1px solid var(--border,#cbd5e1);border-radius:10px;padding:14px;margin:14px 0}
+.market-example{background:#13243a;color:#eef4fc;border-radius:12px;padding:14px;margin:14px 0}
+.market-example>strong{font-size:12px;color:#a9bdd5}
+.market-example>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.market-example span{padding:12px;border:1px solid #6585ab;border-radius:10px;line-height:1.8;font-size:13px}
+@media(max-width:600px){.market-example>div{grid-template-columns:1fr}}

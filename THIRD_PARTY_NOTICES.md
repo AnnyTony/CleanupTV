@@ -10,6 +10,14 @@ CleanupTV là giao diện Windows độc lập, không phải bản phát hành 
 - Eclipse Temurin JDK: GPLv2 với Classpath Exception; giữ các tệp license trong `.runtime/jdk/`.
 - AndroidX/Gradle và phụ thuộc được tải khi build; giữ thông báo và giấy phép gốc. Không tải APK từ trang thứ ba.
 
+## Bảng giá tùy chọn từ bản 0.6
+
+- Nguồn vàng: [BTMC Hà Nội](https://btmc.vn/gia-vang-theo-ngay.html), phần bảng công khai `/Home/BGiaVang`; giữ tên hãng và đơn vị nguồn, không đóng gói dữ liệu tải về.
+- Ngoại tệ: [Vietcombank](https://www.vietcombank.com.vn/KHCN/Cong-cu-tien-ich/Ty-gia) và XML do trang này liên kết; yêu cầu tối đa mỗi 15 phút, thưa hơn giới hạn một yêu cầu mỗi 5 phút ghi trong XML.
+- Xăng dầu: [Petrolimex](https://petrolimex.com.vn/thong-tin-khach-hang.html), endpoint tìm mặt hàng Published được chính trang dùng để hiển thị bảng giá, Vùng 1/2 và mốc từng mặt hàng.
+- Chỉ đọc dữ liệu công khai qua HTTPS, không phân phối mã JavaScript/logo/website của nhà cung cấp. Không khẳng định quyền tái sử dụng thương mại hoặc cam kết API từ các nguồn. Nguồn và điều kiện của nhà cung cấp vẫn áp dụng; xem [ghi chú 0.6](docs/CHANGELOG-0.6.md).
+- `org.json:json:20240303` chỉ dùng trong kiểm thử JVM, không kèm vào APK; giữ LICENSE đi cùng thư viện trong cache Gradle. Mã chạy Android dùng `org.json` của hệ điều hành.
+
 ## MIT License — CleanYourTV
 
 Copyright (c) 2026 Gathin

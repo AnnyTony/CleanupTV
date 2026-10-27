@@ -457,7 +457,7 @@ class Service(PersonalizationMixin, RescueMixin):
             (path.parent / (name + ".txt")).write_text(raw, encoding="utf-8")
         previous = next((r["id"] for r in self.records() if not r["restored"] and (r["changes"] or r["settings"] or r["home"])), None)
         record = {"id": rid, "identity": self.identity, "created": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "application": "Thanh Tùng Tiên Sinh Cleanup", "createdVersion": "0.5.0",
+            "application": "Thanh Tùng Tiên Sinh Cleanup", "createdVersion": "0.6.0",
             "created_ns": time.time_ns(), "parent": previous,
             "model": self.device["model"], "home_before": current, "changes": [], "home_pending": False,
             "restored": False, "launcher_installed": False, "target": self.target,

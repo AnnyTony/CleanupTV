@@ -38,7 +38,7 @@ class FeatureAdb(test_app.FakeAdb):
                 values = json.loads(base64.b64decode(command.split(" --arg ")[1]))
                 if not (self.refuse_personal and values.get("columns") == 7):
                     target.update(values)
-            result = {"version": 1, "values": target}
+            result = {"version": 1, "marketVersion": 1, "values": target}
             if target is self.personal:
                 result["pictures"] = list(self.pictures)
             return "Result: Bundle[{payload=" + base64.b64encode(json.dumps(result).encode()).decode() + "}]"
@@ -116,6 +116,22 @@ class FeatureTests(unittest.TestCase):
     def test_rejects_unknown_keys_types_paths_and_ranges(self):
         for values in ({"shell": "reboot"}, {"columns": True}, {"columns": 99}, {"cyt_lunar": "true"}, {"wallpaper_choice": "../x.jpg"}, {"cyt_background": "red;id"}, {"cyt_name": "x\ny"}):
             with self.subTest(values=values), self.assertRaises(ValueError):
+                personalize.valid_preferences(values)
+
+    def test_market_preferences_restore_absence_and_previous_choices(self):
+        self.adb.personal.update(cyt_gold=False, cyt_currency="JPY", cyt_fuel_zone=2)
+        before=copy.deepcopy(self.adb.personal)
+        with patch("app.time.sleep"):
+            rid=self.prepare()
+            self.service.personal_apply({"backup":rid,"values":{"cyt_gold":True,"cyt_fx":True,"cyt_fuel":True,"cyt_currency":"USD","cyt_fuel_zone":1}})
+            self.assertTrue(self.adb.personal["cyt_gold"])
+            self.assertEqual(self.adb.personal["cyt_currency"],"USD")
+            self.service.restore({"backup":rid})
+        self.assertEqual(self.adb.personal,before)
+
+    def test_market_choices_reject_wrong_types_urls_and_unknown_currencies(self):
+        for values in ({"cyt_gold":"true"},{"cyt_fx":1},{"cyt_fuel":[]},{"cyt_fuel_zone":True},{"cyt_fuel_zone":3},{"cyt_currency":"https://evil.example"},{"cyt_currency":"usd"},{"cyt_currency":"BTC"}):
+            with self.subTest(values=values),self.assertRaises(ValueError):
                 personalize.valid_preferences(values)
 
     def test_weather_city_is_taken_only_from_search_results(self):

@@ -15,7 +15,8 @@ import java.util.Set;
 /** The same bounded preference keys are used by the remote UI and the shell-only provider. */
 final class CleanupPreferences {
     static final String[] KEYS = {"columns", "rows_below_dock", "animations", "advanced_effects",
-        "dock_opacity", "wallpaper_choice", "cyt_lunar", "cyt_name", "cyt_greeting", "cyt_background", "cyt_dim"};
+        "dock_opacity", "wallpaper_choice", "cyt_lunar", "cyt_name", "cyt_greeting", "cyt_background", "cyt_dim",
+        "cyt_gold", "cyt_fx", "cyt_fuel", "cyt_currency", "cyt_fuel_zone"};
     private static final Set<String> ALLOWED = new HashSet<>(Arrays.asList(KEYS));
     static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(Config.SETTINGS_NAME, Context.MODE_PRIVATE);
@@ -30,21 +31,23 @@ final class CleanupPreferences {
     static void validate(String key, Object value) throws Exception {
         if (!ALLOWED.contains(key)) throw new IllegalArgumentException("Unsupported preference");
         if (value == JSONObject.NULL) return;
-        if (Arrays.asList("animations", "advanced_effects", "cyt_lunar", "cyt_greeting").contains(key)) {
+        if (Arrays.asList("animations", "advanced_effects", "cyt_lunar", "cyt_greeting", "cyt_gold", "cyt_fx", "cyt_fuel").contains(key)) {
             if (!(value instanceof Boolean)) throw new IllegalArgumentException("Boolean required");
-        } else if (Arrays.asList("columns", "rows_below_dock", "dock_opacity", "cyt_dim").contains(key)) {
+        } else if (Arrays.asList("columns", "rows_below_dock", "dock_opacity", "cyt_dim", "cyt_fuel_zone").contains(key)) {
             if (!(value instanceof Integer)) throw new IllegalArgumentException("Integer required");
             int n = (Integer) value;
             if ((key.equals("columns") && (n < 4 || n > 7)) ||
                 (key.equals("rows_below_dock") && (n < 0 || n > 3)) ||
                 (key.equals("dock_opacity") && (n < 30 || n > 100)) ||
-                (key.equals("cyt_dim") && (n < 0 || n > 90))) throw new IllegalArgumentException("Out of range");
+                (key.equals("cyt_dim") && (n < 0 || n > 90)) ||
+                (key.equals("cyt_fuel_zone") && (n < 1 || n > 2))) throw new IllegalArgumentException("Out of range");
         } else {
             if (!(value instanceof String)) throw new IllegalArgumentException("String required");
             String s = (String) value;
             if (key.equals("cyt_name") && (s.length() > 60 || s.matches("(?s).*[\\p{Cntrl}].*"))) throw new IllegalArgumentException("Invalid name");
             if (key.equals("cyt_background") && !s.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Invalid colour");
             if (key.equals("wallpaper_choice") && !s.equals("none") && !s.matches("[A-Za-z0-9_.-]+\\.(jpg|jpeg|png|webp)")) throw new IllegalArgumentException("Invalid wallpaper");
+            if (key.equals("cyt_currency") && !s.matches("USD|EUR|JPY|AUD|GBP|SGD|THB|CNY|KRW|CAD")) throw new IllegalArgumentException("Invalid currency");
         }
     }
     static void write(Context context, JSONObject json) throws Exception {

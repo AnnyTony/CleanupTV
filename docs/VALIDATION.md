@@ -1,4 +1,13 @@
-# Kiểm tra bản 0.5 — 26/10/2026
+# Kiểm tra bản 0.6 — 27/10/2026
+
+## Kết quả bản 0.6
+
+- 90 kiểm thử Python qua, gồm hoàn tác chính xác các công tắc bảng giá, ngoại tệ/vùng trước đó và giá trị chưa từng đặt; từ chối sai kiểu, URL thay cho ngoại tệ, mã tiền không hỗ trợ và vùng ngoài phạm vi. Kiểm tra cú pháp cả ba tệp JavaScript qua.
+- 15 kiểm thử JVM mới cho bộ đọc bảng giá: đơn vị/ngày/dòng vàng thay đổi, phân biệt mua tiền mặt/chuyển khoản/bán, giá không niêm yết, số/ngày sai, XML entity, cấp nhiên liệu/vùng và truy vấn chỉ mặt hàng Published. Launcher và Thời tiết đều qua `testReleaseUnitTest lintRelease assembleRelease` bằng toolchain thật.
+- Cùng bộ đọc Java đã xử lý phản hồi thật của BTMC, Vietcombank, Petrolimex. Kiểm tra HTTP 200 với đúng User-Agent và chính sách không theo redirect của ứng dụng. Dữ liệu tải về chỉ nằm trong `.local`, không đóng gói vào Git/ZIP.
+- Launcher 0.6 có quyền Internet cho bảng giá tùy chọn, cả ba mặc định tắt; không thêm thư viện vào mã APK để đọc giá. `org.json` bổ sung chỉ cho kiểm thử JVM. Worker riêng, cache theo nguồn, thời hạn/giới hạn phản hồi, không bắt đầu lượt mới khi Home ở nền.
+- Giao diện máy tính thử bằng Sony mô phỏng: bật ba bảng, chọn JPY/Vùng 2, sao lưu/thử rồi hoàn tác. Đã sửa đồng bộ trạng thái nút sau tác vụ và sau hoàn tác mà không vẽ lại/xóa nội dung biểu mẫu.
+- Chưa thử TV thật, bố cục/cỡ chữ/độ phân giải, điều hướng remote, TLS trên firmware cũ hay CPU/RAM thực tế. Không dùng kết quả mô phỏng để khẳng định hỗ trợ mọi model. Nguồn công khai có thể đổi cấu trúc hoặc chặn truy cập; không có SLA từ nhà cung cấp.
 
 ## Kết quả bản 0.5
 

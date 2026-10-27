@@ -18,16 +18,34 @@
         <label class="check"><input id="personal-lunar" type="checkbox" ${val('cyt_lunar',false)?'checked':''}><span>Hiện ngày âm bên dưới ngày dương · lịch Việt Nam, UTC+7</span></label>
         <label class="check"><input id="personal-greeting" type="checkbox" ${val('cyt_greeting',true)?'checked':''}><span>Hiện lời chào</span></label>
         <label class="check"><input id="personal-motion" type="checkbox" ${val('animations',true)?'checked':''}><span>Hiệu ứng chuyển động trong launcher</span></label>
+        <hr><h3>Giá vàng · Ngoại tệ · Xăng dầu trên Home</h3>
+        <p>Ba ô ngay dưới đồng hồ, tự tải bằng Internet của TV khi Home đang mở. Sau khi cài và Giữ, không cần máy tính chạy liên tục hay bật gỡ lỗi. Bật từng bảng nếu muốn sử dụng.</p>
+        <p class="muted">Nguồn: BTMC tại Hà Nội (giữ nguyên đơn vị nghìn VND của nguồn), Vietcombank (VND/1 ngoại tệ), Petrolimex (VND/lít, chọn vùng). Mỗi ô ghi nguồn, mốc niêm yết và tình trạng bản lưu; bấm OK trên TV để xem chi tiết. Không suy đoán tăng/giảm. Chỉ tham khảo.</p>
+        ${loaded.marketVersion!==1?notice('Launcher đang cài chưa có Bảng giá. Mở Chuẩn bị lần đầu, build bản mới, Sao lưu/cập nhật/thử rồi Đọc thiết lập lại.'):''}
+        <fieldset ${loaded.marketVersion!==1?'disabled':''} class="market-fields"><legend>Bật bảng giá · TV sẽ truy cập nguồn công khai qua HTTPS</legend>
+          ${[['cyt_gold','Vàng · Bảo Tín Minh Châu'],['cyt_fx','Ngoại tệ · Vietcombank'],['cyt_fuel','Xăng dầu · Petrolimex']].map(([key,label])=>`<label class="check"><input id="personal-${key}" type="checkbox" ${val(key,false)?'checked':''}><span>${label}</span></label>`).join('')}
+          <div class="field-row">${field('Ngoại tệ hiển thị',`<select id="personal-currency">${['USD','EUR','JPY','AUD','GBP','SGD','THB','CNY','KRW','CAD'].map(code=>`<option ${val('cyt_currency','USD')===code?'selected':''}>${code}</option>`).join('')}</select>`)}${field('Khu vực giá Petrolimex',`<select id="personal-fuel-zone"><option value="1" ${val('cyt_fuel_zone',1)===1?'selected':''}>Vùng 1</option><option value="2" ${val('cyt_fuel_zone',1)===2?'selected':''}>Vùng 2</option></select>`)}</div>
+        </fieldset><p class="muted">Vùng 2 theo danh mục địa bàn của Petrolimex, không phải miền Bắc/Nam. Vàng/ngoại tệ kiểm tra mỗi 15 phút, xăng mỗi 6 giờ khi Home mở; khi xem phim sẽ dừng các lượt tải mới. Tải thành công không có nghĩa nguồn vừa đổi giá. Nguồn lỗi sẽ báo chưa cập nhật, không dùng giá mẫu.</p>
+        <div class="market-example"><strong>Mô phỏng vị trí · không phải giá hiện tại</strong><div><span>Giá vàng<br>Mua / Bán: —<br>BTMC · mốc nguồn</span><span>Ngoại tệ<br>Mua / Bán: —<br>Vietcombank · mốc nguồn</span><span>Xăng dầu<br>Vùng đã chọn: —<br>Petrolimex · mốc nguồn</span></div></div><hr>
         ${field('Ảnh nền đã lưu trên TV',`<select id="personal-picture"><option value="">Theo giao diện mặc định</option><option value="none" ${val('wallpaper_choice','')==='none'?'selected':''}>Không dùng ảnh nền</option>${(loaded.pictures||[]).map(name=>`<option value="${esc(name)}" ${val('wallpaper_choice','')===name?'selected':''}>${esc(name)}</option>`).join('')}</select>`)}
         ${field('Thêm ảnh từ máy tính', '<input id="personal-file" type="file" accept="image/jpeg,image/png,image/webp">')}<p class="muted">Ảnh được thu nhỏ tối đa 1920 × 1080 trước khi gửi; tối đa 12 ảnh cá nhân. Trên TV có thể chọn ảnh đã lưu hoặc mở trình chọn ảnh TV/USB nếu có.</p>
         <div class="two-buttons"><button class="btn" data-personal="apply" ${busy?'disabled':''}>Thử thiết lập trong 3 phút</button><button class="btn secondary" data-personal="reset" ${busy?'disabled':''}>Thử trở về mặc định</button></div>`}
       <hr><h3>Thời tiết · tùy chọn</h3><p>Một ô mở trang thời tiết trên TV, có ngày hiện tại và dự báo. Không phải tiện ích nhiệt độ cập nhật liên tục trên Home. Chọn thành phố bằng TV hoặc tìm trên máy tính; không tự lấy GPS.</p>
-      <p class="muted">Tìm địa điểm gửi tên vừa nhập đến Open-Meteo / GeoNames; mô-đun gửi tọa độ thành phố khi tải dự báo. Không cần tài khoản cá nhân. Internet chỉ cần cho phần thời tiết.</p>
+      <p class="muted">Tìm địa điểm gửi tên vừa nhập đến Open-Meteo / GeoNames; mô-đun gửi tọa độ thành phố khi tải dự báo. Không cần tài khoản cá nhân. Thời tiết cần Internet khi tải dự báo; các bảng giá phía trên có nguồn và công tắc riêng.</p>
       <div class="two-buttons"><button class="btn secondary" data-personal="build-weather">1. Build Thời tiết</button><button class="btn secondary" data-personal="install-weather" ${!state.device?'disabled':''}>2. Cài Thời tiết</button><button class="btn secondary" data-personal="weather-open" ${!state.device?'disabled':''}>Mở / đổi thành phố trên TV</button></div>
       ${field('Tìm thành phố', '<input id="personal-city-query" placeholder="Ví dụ: Cần Thơ">')}<button class="btn secondary" data-personal="search" ${busy?'disabled':''}>Tìm thành phố</button><div id="personal-cities"></div><p id="personal-city-selected"></p>
       <p class="muted">${loaded?.weather?.name?'Thành phố đang lưu: '+esc(loaded.weather.name):'Chưa đọc được thành phố đã lưu.'} Sau khi chọn thành phố, bấm Thử thiết lập để lưu cùng lần thử.</p>
       <p class="muted">Sau khi Giữ và tắt gỡ lỗi, vẫn chỉnh trực tiếp bằng điều khiển TV. Muốn chỉnh từ máy tính cần bật gỡ lỗi và kết nối lại. Các ảnh và mô-đun đã thêm được giữ lại khi hoàn tác thiết lập.</p>`;
-    preview();
+    preview(); syncState();
+  }
+  function syncState() {
+    const locked=busy||personalBusy||(state.trials||[]).length>0;
+    panel.querySelectorAll('input,select,button[data-personal],button[data-action="personal_read"]').forEach(control=>{
+      const action=control.dataset.personal;
+      if(action==='close'){control.disabled=false;return;}
+      const needsDevice=control.dataset.action==='personal_read'||['open','weather-open','install-weather','update','apply','reset'].includes(action)||control.id==='personal-file';
+      control.disabled=locked||(needsDevice&&!state.device);
+    });
   }
   function preview() {
     if(!$('personal-preview'))return;
@@ -80,12 +98,13 @@
       if(action==='apply'||action==='reset'){
         if(!loaded)throw Error('Đọc thiết lập trên TV trước.');
         const values=action==='reset'?Object.fromEntries(Object.keys(loaded.values).map(key=>[key,null])):{columns:Number($('personal-columns').value),cyt_background:$('personal-color').value,cyt_name:$('personal-name').value.trim(),cyt_dim:Number($('personal-dim').value),cyt_lunar:$('personal-lunar').checked,cyt_greeting:$('personal-greeting').checked,animations:$('personal-motion').checked,advanced_effects:false,wallpaper_choice:$('personal-picture').value||null};
+        if(action==='apply'&&loaded.marketVersion===1){for(const key of ['cyt_gold','cyt_fx','cyt_fuel'])values[key]=$('personal-'+key).checked;values.cyt_currency=$('personal-currency').value;values.cyt_fuel_zone=Number($('personal-fuel-zone').value);}
         const id=await ensureBackup();await run('personal_apply',{backup:id,values,...(city&&action==='apply'?{city}:{})});return;
       }
-    }catch(error){toast(error.message);}finally{personalBusy=false;}
+    }catch(error){toast(error.message);}finally{personalBusy=false;syncState();}
   });
   $('personal-open').addEventListener('click',()=>{panel.classList.remove('hidden');if(!panel.innerHTML)draw();panel.scrollIntoView({behavior:'smooth'});});
-  window.CleanupPersonalize={result(job){
+  window.CleanupPersonalize={state:syncState,result(job){
     if(job.status!=='done')return;
     if(job.action==='personal_read'){loaded=job.result;city=null;draw();}
     if(job.action==='personal_upload'){

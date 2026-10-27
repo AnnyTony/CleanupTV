@@ -49,10 +49,31 @@ public final class CleanupSettingsActivity extends Activity {
             try { startActivity(new Intent().setClassName("io.github.sumyabazar1.weather", "io.github.sumyabazar1.weather.WeatherActivity")); }
             catch (android.content.ActivityNotFoundException error) { message("Chưa cài mô-đun Thời tiết. Chuẩn bị bằng CleanupTV trên máy tính."); }
         });
+        SharedPreferencesHolder prices = new SharedPreferencesHolder(this);
+        TextView note = new TextView(this); note.setText("Bảng giá trên Home · tùy chọn. Khi bật, TV gửi yêu cầu HTTPS đến BTMC, Vietcombank và Petrolimex. Không cần máy tính; chỉ tải khi Home đang mở. Nguồn và mốc niêm yết nằm trong từng bảng. Giá chỉ tham khảo."); note.setTextColor(Color.LTGRAY); note.setTextSize(17); body.addView(note);
+        priceToggle("Giá vàng · BTMC Hà Nội", "cyt_gold", prices);
+        priceToggle("Tỷ giá ngoại tệ · Vietcombank", "cyt_fx", prices);
+        priceToggle("Giá xăng dầu · Petrolimex", "cyt_fuel", prices);
+        row("Ngoại tệ · " + prices.p.getString("cyt_currency", "USD"), () -> {
+            String[] currencies = {"USD","EUR","JPY","AUD","GBP","SGD","THB","CNY","KRW","CAD"};
+            new AlertDialog.Builder(this).setTitle("Ngoại tệ hiển thị").setItems(currencies,(d,n)->save("cyt_currency",currencies[n])).show();
+        });
+        row("Giá xăng dầu · Vùng " + prices.p.getInt("cyt_fuel_zone",1), () -> new AlertDialog.Builder(this).setTitle("Khu vực giá Petrolimex").setMessage("Vùng 2 là địa bàn theo danh mục của Petrolimex, không phải miền Bắc/Nam. Kiểm tra cửa hàng đang mua trước khi chọn.").setPositiveButton("Vùng 1",(d,n)->save("cyt_fuel_zone",1)).setNeutralButton("Vùng 2",(d,n)->save("cyt_fuel_zone",2)).setNegativeButton("Hủy",null).show());
         row("Theo giao diện mặc định", () -> new AlertDialog.Builder(this).setTitle("Bỏ các lựa chọn cá nhân?").setMessage("Giữ ứng dụng và ảnh đã lưu. Dùng lại thiết lập của giao diện đang có.").setPositiveButton("Khôi phục", (d,n) -> {
             try { JSONObject empty = new JSONObject(); for (String key : CleanupPreferences.KEYS) empty.put(key, JSONObject.NULL); CleanupPreferences.write(this, empty); render(); } catch (Exception error) { message(error.getMessage()); }
         }).setNegativeButton("Hủy",null).show());
         row("Xong · về Màn hình chính", () -> { startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)); finish(); });
+    }
+    private static final class SharedPreferencesHolder {
+        final android.content.SharedPreferences p;
+        SharedPreferencesHolder(Activity a) { p=CleanupPreferences.prefs(a); }
+    }
+    private void priceToggle(String title, String key, SharedPreferencesHolder holder) {
+        boolean on=holder.p.getBoolean(key,false);
+        row(title+" · "+(on?"Bật":"Tắt"), () -> {
+            if(on) save(key,false);
+            else new AlertDialog.Builder(this).setTitle("Bật "+title+"?").setMessage("TV sẽ truy cập nguồn giá công khai qua Internet khi Home mở. Giá có thể chậm hoặc chưa tải được; không thay cho niêm yết tại nơi giao dịch. Có thể tắt lại bất cứ lúc nào.").setPositiveButton("Bật",(d,n)->save(key,true)).setNegativeButton("Hủy",null).show();
+        });
     }
     private void pictures() {
         java.io.File dir = Config.dir(this);

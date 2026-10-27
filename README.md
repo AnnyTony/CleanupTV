@@ -2,7 +2,7 @@
 
 Ứng dụng tiếng Việt chạy trên máy tính Windows, hướng dẫn kết nối, kiểm tra tài nguyên, giảm một số dịch vụ không cần thiết và thử màn hình chính [CleanYourTV](https://github.com/Gathin23/cleanyourtv) trên Android TV / Google TV.
 
-**Bản 0.5.0 là bản thử nghiệm. Chưa được xác minh trên TV thật.** Các kiểm thử tự động dùng thiết bị mô phỏng. Cơ sở hồ sơ cộng đồng giúp đối chiếu, không phải chứng nhận tương thích hay bảo đảm TV không gặp lỗi.
+**Bản 0.6.0 là bản thử nghiệm. Chưa được xác minh trên TV thật.** Các kiểm thử tự động dùng thiết bị mô phỏng. Cơ sở hồ sơ cộng đồng giúp đối chiếu, không phải chứng nhận tương thích hay bảo đảm TV không gặp lỗi.
 
 ![Giao diện CleanupTV](docs/preview.png)
 
@@ -33,6 +33,14 @@ Mục **Hỗ trợ về Home hệ thống** dành cho TV đã chỉnh bằng cô
 Thông báo ghi rõ: “Không tìm thấy bản sao lưu của Thanh Tùng Tiên Sinh Cleanup trên máy tính này…”; không quy kết người dùng chưa từng sử dụng chương trình chỉ vì thiếu tệp. Nếu có bản lưu đúng thiết bị/firmware, ưu tiên chức năng **Mở khôi phục**.
 
 Hướng dẫn cập nhật, giới hạn, nguồn dữ liệu và cách hai giao diện dùng chung thiết lập: [Ghi chú bản 0.5](docs/CHANGELOG-0.5.md).
+
+## Giá vàng, ngoại tệ và xăng dầu trên Home · mới trong 0.6
+
+Ba ô tùy chọn ngay dưới đồng hồ. Bật/tắt bằng **Cá nhân hóa TV** trên máy tính hoặc remote. TV tự tải khi Home mở, không cần máy tính chạy liên tục sau khi cài. Có lựa chọn ngoại tệ và vùng giá Petrolimex, nguồn/mốc niêm yết, trạng thái bản lưu khi chưa cập nhật được; OK trên mỗi ô mở chi tiết.
+
+Mặc định tắt. Launcher 0.6 bổ sung quyền Internet để lấy bảng giá trực tiếp từ BTMC, Vietcombank và Petrolimex. Vàng giữ nguyên đơn vị nghìn VND của BTMC Hà Nội, ngoại tệ VND/1 ngoại tệ, xăng VND/lít. Không tự quy đổi đơn vị vàng hay suy đoán tăng/giảm. Chỉ tham khảo; nguồn có thể thay đổi hoặc ngừng cung cấp.
+
+**Cần build và cập nhật launcher** để có ba ô thật trên TV, rồi Đọc thiết lập và Thử/Giữ lựa chọn. [Hướng dẫn cập nhật, nguồn dữ liệu và giới hạn bản 0.6](docs/CHANGELOG-0.6.md).
 
 ## CleanYourTV thực hiện những việc gì?
 
@@ -126,7 +134,7 @@ Nếu đổi firmware, ứng dụng từ chối áp bản ghi cũ tự động. 
 
 ## Quyền riêng tư và bảo vệ localhost
 
-Không analytics, không tài khoản máy chủ. Dữ liệu TV ở `.local/`; bản chụp và settings có thể chứa tên Wi-Fi, tài khoản hoặc định danh, cần xem kỹ trước khi chia sẻ. Chỉ quá trình tải công cụ và build dependency cần truy cập Internet.
+Không analytics, không tài khoản máy chủ. Dữ liệu TV ở `.local/`; bản chụp và settings có thể chứa tên Wi-Fi, tài khoản hoặc định danh, cần xem kỹ trước khi chia sẻ. Quá trình tải công cụ, build dependency và các chức năng trực tuyến tùy chọn cần Internet. Launcher bản 0.6 có quyền Internet để đọc bảng giá khi người dùng bật; mặc định các bảng đều tắt. Xem nguồn, dữ liệu gửi đi và giới hạn trong [Ghi chú bản 0.6](docs/CHANGELOG-0.6.md).
 
 HTTP server bind `127.0.0.1` với cổng tự chọn, kiểm tra Host/Origin và token cho thao tác ghi; không bật CORS, không cung cấp endpoint thực thi lệnh tùy ý. Chỉ chấp nhận IP RFC1918 và cổng hợp lệ. Có khóa một tác vụ tại một thời điểm. Không mở dịch vụ ra LAN.
 
@@ -142,7 +150,7 @@ node --check web/app.js
 
 Chạy bằng Python có sẵn vẫn cần ADB tại `.runtime/adb/platform-tools/adb.exe`; dùng START.bat để tự chuẩn bị.
 
-Tạo ZIP `dist/CleanupTV-Windows-0.5.0.zip` để đưa vào GitHub Releases:
+Tạo ZIP `dist/CleanupTV-Windows-0.6.0.zip` để đưa vào GitHub Releases:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1
